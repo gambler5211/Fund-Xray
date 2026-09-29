@@ -1,0 +1,9 @@
+# Builds the API image on Google Cloud Build and pushes it to Artifact Registry.
+# Called by scripts/deploy-api.sh, which passes _IMAGE.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "api/Dockerfile", "-t", "${_IMAGE}", "."]
+images:
+  - "${_IMAGE}"
+options:
+  logging: CLOUD_LOGGING_ONLY

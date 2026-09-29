@@ -37,3 +37,13 @@ export function ComingSoon({ kicker, title, week, body }: { kicker: string; titl
     </section>
   );
 }
+
+/** Section title: a heavy rule, the title, and optional small text on the right. */
+export function SectionHeader({ title, aside }: { title: string; aside?: React.ReactNode }) {
+  return (
+    <div className="flex items-baseline justify-between gap-4 border-b-2 border-ink pb-1.5">
+      <h2 className="text-[22px] font-semibold md:text-[26px]">{title}</h2>
+      {aside ? <span className="font-sans text-caption text-ink-3">{aside}</span> : null}
+    </div>
+  );
+}

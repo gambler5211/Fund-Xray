@@ -87,3 +87,24 @@ cd api && pytest -q
 ## Secrets
 
 Real values live only in `web/.env.local` and `api/.env` (both git-ignored) and in Vercel / your API host.
+
+## Deploy the API (Google Cloud Run, Mumbai)
+
+The API runs on Cloud Run in `asia-south1` (project `fund-xray`). It sleeps when idle, so it is free at our size;
+the first request after a quiet spell takes 1–3 seconds.
+
+In the Google Cloud console, open **Cloud Shell** (the `>_` icon, top right), then:
+
+```bash
+git clone https://github.com/gambler5211/Fund-Xray.git && cd Fund-Xray
+bash scripts/deploy-api.sh setup      # first time only
+```
+
+After that, deploy with `git pull && bash scripts/deploy-api.sh`. Once the Vercel address is known:
+
+```bash
+WEB_ORIGIN="https://<your-app>.vercel.app,http://localhost:3000" bash scripts/deploy-api.sh
+```
+
+The script prints the API address; put it in Vercel as `NEXT_PUBLIC_API_URL` and redeploy the web app.
+Set a ₹100/month budget alert under Billing → Budgets & alerts.
