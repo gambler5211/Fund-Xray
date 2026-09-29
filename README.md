@@ -131,3 +131,27 @@ WEB_ORIGIN="https://<your-app>.vercel.app,http://localhost:3000" bash scripts/de
 
 The script prints the API address; put it in Vercel as `NEXT_PUBLIC_API_URL` and redeploy the web app.
 Set a ₹100/month budget alert under Billing → Budgets & alerts.
+
+## CI/CD: what deploys itself
+
+| Part | Deploys when | How |
+| --- | --- | --- |
+| Web app | Any push to `main` (previews for `dev` and PRs) | Vercel, from its GitHub connection |
+| Database | A new file in `supabase/migrations/` lands on `main` | Supabase GitHub integration |
+| API | A change under `api/` or `engine/` lands on `main` | `.github/workflows/deploy-api.yml` |
+| Checks | Every PR and push to `main` | `.github/workflows/ci.yml`: web lint + build, Python tests |
+
+The API workflow runs the tests, builds the image, deploys to Cloud Run, then checks `/health`
+answers and `/me` refuses a missing sign-in. It signs in to Google with Workload Identity
+Federation, so no Google key is stored in GitHub, and only this repo's `main` branch is trusted.
+
+One-time setup (Cloud Shell, about 2 minutes):
+
+```bash
+cd Fund-Xray && git pull
+bash scripts/setup-github-deploy.sh
+```
+
+Add the two values it prints as GitHub repository **variables** (Settings → Secrets and
+variables → Actions → Variables): `GCP_WIF_PROVIDER` and `GCP_DEPLOY_SA`. Then run
+Actions → Deploy API → Run workflow once. `scripts/deploy-api.sh` still works for a manual deploy.
