@@ -13,7 +13,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.testclient import TestClient
 
-from app import auth, crypto, kite, outbound
+from app import auth, crypto, instruments, kite, outbound
 from app.config import settings
 from app.main import app
 
@@ -43,6 +43,14 @@ class World:
         self.kite_down = False
         self.used_request_tokens: set[str] = set()
         self.calls: list[str] = []
+        self.snapshots: dict[str, list[dict]] = {}
+        self.holdings = [
+            {"tradingsymbol": "TATAMOTORS", "exchange": "NSE", "isin": "INE155A01022", "quantity": 10, "t1_quantity": 0,
+             "average_price": 900, "last_price": 950, "close_price": 940},
+            {"tradingsymbol": "KPIGREEN", "exchange": "NSE", "isin": "INE542W01025", "quantity": 20, "t1_quantity": 5,
+             "average_price": 400, "last_price": 380, "close_price": 390},
+        ]
+        self.instruments_down = False
 
     def handler(self, req: httpx.Request) -> httpx.Response:
         url = str(req.url)
@@ -50,6 +58,9 @@ class World:
         if url.startswith(SUPABASE):
             assert req.headers["apikey"] == "sb_publishable_test"
             sub = jwt.decode(req.headers["authorization"].split()[1], options={"verify_signature": False})["sub"]
+            if req.url.path == "/rest/v1/holdings_snapshot":
+                rows = list(reversed(self.snapshots.get(sub, [])))[:1]
+                return httpx.Response(200, json=rows)
             fn = req.url.path.rsplit("/", 1)[-1]
             args = json.loads(req.content or b"{}")
             if fn == "save_kite_token":
@@ -58,6 +69,11 @@ class World:
                 return httpx.Response(204)
             if fn == "get_kite_token":
                 return httpx.Response(200, json=[self.rows[sub]] if sub in self.rows else [])
+            if fn == "save_holdings_snapshot":
+                row = {"taken_at": datetime.now(timezone.utc).isoformat(), "holdings": args["p_holdings"],
+                       "positions": args["p_positions"], "totals": args["p_totals"]}
+                self.snapshots.setdefault(sub, []).append(row)
+                return httpx.Response(200, json=[{"id": len(self.snapshots[sub]), "taken_at": row["taken_at"]}])
             if fn == "delete_kite_token":
                 self.rows.pop(sub, None)
                 return httpx.Response(204)
@@ -78,6 +94,20 @@ class World:
         if req.url.path == "/session/token" and req.method == "DELETE":
             self.kite_valid.discard(req.url.params["access_token"])
             return httpx.Response(200, json={"status": "success", "data": True})
+        if req.url.path in ("/portfolio/holdings", "/portfolio/positions") or req.url.path.startswith("/instruments/"):
+            tok = req.headers["authorization"].split(":", 1)[1]
+            if tok not in self.kite_valid:
+                return httpx.Response(403, json={"status": "error", "error_type": "TokenException", "message": "expired"})
+            if req.url.path == "/portfolio/holdings":
+                return httpx.Response(200, json={"status": "success", "data": self.holdings})
+            if req.url.path == "/portfolio/positions":
+                return httpx.Response(200, json={"status": "success", "data": {"net": [], "day": []}})
+            if self.instruments_down:
+                return httpx.Response(503, text="busy")
+            csv_text = "instrument_token,exchange_token,tradingsymbol,name,last_price,expiry,strike,tick_size,lot_size,instrument_type,segment,exchange\n"
+            if req.url.path.endswith("/NSE"):
+                csv_text += "1,1,TATAMOTORS,TATA MOTORS,0,,0,0.05,1,EQ,NSE,NSE\n2,2,KPIGREEN,KPI GREEN ENERGY,0,,0,0.05,1,EQ,NSE,NSE\n"
+            return httpx.Response(200, text=csv_text)
         if req.url.path == "/user/profile":
             tok = req.headers["authorization"].split(":", 1)[1]
             if tok not in self.kite_valid:
@@ -94,6 +124,7 @@ def world(monkeypatch):
         monkeypatch.setattr(settings, k, v)
     monkeypatch.setattr(auth, "jwks_client", lambda: FakeJWKS())
     crypto._fernet.cache_clear()
+    instruments.clear()
     outbound.set_client(httpx.Client(transport=httpx.MockTransport(w.handler)))
     yield w
     outbound.set_client(None)

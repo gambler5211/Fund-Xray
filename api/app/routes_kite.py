@@ -66,9 +66,9 @@ def live_token(user: User) -> str:
     return token
 
 
-def kite_get(user: User, path: str) -> dict:
+def kite_get(user: User, path: str, token: str | None = None):
     """GET from Kite for this user; turns an early token expiry into a clean 409."""
-    token = live_token(user)
+    token = token or live_token(user)
     try:
         return kite.get(token, path)
     except kite.KiteTokenExpired:
