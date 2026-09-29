@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+/*
+  Fund X-Ray design tokens — "paper" direction.
+  Day is the default theme; night is the "night edition".
+  Components use ONLY these tokens (via Tailwind classes like bg-paper, text-ink-3, border-rule).
+*/
+
+:root,
+[data-theme="day"] {
+  --paper: #f6f2ea;          /* page background */
+  --paper-2: #efe9dd;        /* hover / pressed surface */
+  --ink: #1b1a17;            /* primary text, strong rules */
+  --ink-2: #3a3732;          /* body copy */
+  --ink-3: #5e5a52;          /* captions, labels */
+  --rule: #d9d2c4;           /* thin separators */
+  --underline: #b8ae9c;      /* link underline */
+  --accent: #9e2a2b;         /* oxblood: section labels, current nav */
+  --gain: #1f6b4a;
+  --loss: #a3362b;
+  --q-leading: #1f6b4a;
+  --q-improving: #2c4f8c;
+  --q-weakening: #8a5a12;
+  --q-lagging: #a3362b;
+  --on-fill: #ffffff;        /* text on a coloured fill */
+  color-scheme: light;
+}
+
+[data-theme="night"] {
+  --paper: #1a1917;
+  --paper-2: #24221f;
+  --ink: #ede6d8;
+  --ink-2: #cfc6b5;
+  --ink-3: #b3aa99;
+  --rule: #3a3630;
+  --underline: #6e665a;
+  --accent: #e28a7e;
+  --gain: #5fae86;
+  --loss: #e0786d;
+  --q-leading: #5fae86;
+  --q-improving: #7f9fd8;
+  --q-weakening: #d4a24c;
+  --q-lagging: #e0786d;
+  --on-fill: #1a1917;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-rule: var(--rule);
+  --color-underline: var(--underline);
+  --color-accent: var(--accent);
+  --color-gain: var(--gain);
+  --color-loss: var(--loss);
+  --color-q-leading: var(--q-leading);
+  --color-q-improving: var(--q-improving);
+  --color-q-weakening: var(--q-weakening);
+  --color-q-lagging: var(--q-lagging);
+  --color-on-fill: var(--on-fill);
+
+  --font-serif: "Newsreader Variable", Georgia, serif;
+  --font-sans: "Source Sans 3", system-ui, sans-serif;
+
+  /* Type scale: 12 / 14 / 16 / 20 / 28 / 40 / 56 px */
+  --text-caption: 12px;
+  --text-ui: 14px;
+  --text-body: 16px;
+  --text-lead: 20px;
+  --text-h3: 28px;
+  --text-h2: 40px;
+  --text-h1: 56px;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Newsreader Variable", Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Every number lines up like a stock-listings page */
+.figures {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+a {
+  text-decoration-color: var(--underline);
+  text-underline-offset: 3px;
+}
+a:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in {
+    animation: fade-in 180ms ease-out;
+  }
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: none; }
+  }
+}
