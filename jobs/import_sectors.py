@@ -76,11 +76,10 @@ with nse_client() as c:
         if looks_like_fund(symbol, name):
             funds.append({"isin": isin, "symbol": symbol, "company_name": name, "industry": "ETFs & funds", "source": "fund"})
             continue
-        if h.get("exchange", "NSE") != "NSE":
-            missing.append(f"{symbol} (BSE only)")
-            continue
+        # Kite's "exchange" is where the holding sits, not where the stock trades:
+        # most BSE-held stocks are on NSE too, so always ask NSE first.
         info, why = None, ""
-        for series in ("EQ", "BE", "SM", "ST"):  # main board, trade-to-trade, SME
+        for series in ("EQ", "BE", "BZ", "SM", "ST"):  # main board, trade-to-trade, SME
             try:
                 r = c.get(QUOTE_URL.format(series=series, symbol=symbol),
                           headers={"Accept": "application/json", "Referer": QUOTE_REFERER.format(symbol=symbol)})
@@ -91,12 +90,12 @@ with nse_client() as c:
             if info:
                 break
             time.sleep(0.4)
-        if not info:
+        if not info and why != "HTTP 404":  # 404 = not listed on NSE, which isn't a failure
             reasons[why] = reasons.get(why, 0) + 1
         if info:
             found.append({"isin": isin, "symbol": symbol, "company_name": name, "source": "NSE quote", **info})
         else:
-            missing.append(symbol)
+            missing.append(symbol if why != "HTTP 404" else f"{symbol} (not on NSE)")
         time.sleep(0.8)
 
 EXTRA = {"macro": None, "industry_detail": None, "basic_industry": None}
