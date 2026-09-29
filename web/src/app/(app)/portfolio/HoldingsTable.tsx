@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { DataTable } from "@/components/kit/DataTable";
 import { count, pct, price, rupees, signedPct, signedRupees } from "@/lib/format";
 import type { HoldingRowData } from "@/lib/holdings";
+import { instrumentKey, type SectorMap } from "@/lib/sectorsShared";
+import { SectorPicker } from "./SectorPicker";
 
 const tone = (n: number) => (n > 0 ? "text-gain" : n < 0 ? "text-loss" : "text-ink-3");
 
@@ -21,7 +23,8 @@ function Both({ amount, change }: { amount: number; change: number }) {
   );
 }
 
-const COLUMNS: ColumnDef<HoldingRowData, unknown>[] = [
+function columns(sectors: SectorMap): ColumnDef<HoldingRowData, unknown>[] {
+  return [
   {
     id: "name",
     header: "Company",
@@ -36,6 +39,12 @@ const COLUMNS: ColumnDef<HoldingRowData, unknown>[] = [
       </span>
     ),
   },
+  {
+    id: "sector",
+    header: "Sector",
+    accessorFn: (h) => sectors[instrumentKey(h)]?.industry ?? "~Unmapped",
+    cell: ({ row: { original: h } }) => <SectorPicker instrument={instrumentKey(h)} info={sectors[instrumentKey(h)] ?? { industry: null, source: null }} />,
+  },
   { id: "qty", header: "Qty", accessorFn: (h) => h.quantity, cell: (c) => count(c.getValue() as number), meta: { align: "right" } },
   { id: "avg", header: "Avg cost", accessorFn: (h) => h.avg_price, cell: (c) => price(c.getValue() as number), meta: { align: "right" } },
   { id: "ltp", header: "Last price", accessorFn: (h) => h.last_price, cell: (c) => price(c.getValue() as number), meta: { align: "right" } },
@@ -43,21 +52,23 @@ const COLUMNS: ColumnDef<HoldingRowData, unknown>[] = [
   { id: "day", header: "Today", accessorFn: (h) => h.day_change_pct, cell: ({ row: { original: h } }) => <Both amount={h.day_change} change={h.day_change_pct} />, meta: { align: "right" } },
   { id: "pnl", header: "P/L", accessorFn: (h) => h.pnl_pct, cell: ({ row: { original: h } }) => <Both amount={h.pnl} change={h.pnl_pct} />, meta: { align: "right" } },
   { id: "weight", header: "Weight", accessorFn: (h) => h.weight_pct, cell: (c) => pct(c.getValue() as number), meta: { align: "right" } },
-];
+  ];
+}
 
 /**
  * Holdings set like a stock-listings page. Sort by any column, search by name or symbol, or put the
  * biggest losers (by total P/L %) first. On phones each holding becomes a stacked entry.
  */
-export function HoldingsTable({ holdings }: { holdings: HoldingRowData[] }) {
+export function HoldingsTable({ holdings, sectors }: { holdings: HoldingRowData[]; sectors: SectorMap }) {
+  const cols = useMemo(() => columns(sectors), [sectors]);
   const [q, setQ] = useState("");
   const [losersFirst, setLosersFirst] = useState(false);
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    const list = needle ? holdings.filter((h) => h.name.toLowerCase().includes(needle) || h.symbol.toLowerCase().includes(needle)) : holdings;
+    const list = needle ? holdings.filter((h) => h.name.toLowerCase().includes(needle) || h.symbol.toLowerCase().includes(needle) || (sectors[instrumentKey(h)]?.industry ?? "unmapped").toLowerCase().includes(needle)) : holdings;
     return losersFirst ? [...list].sort((a, b) => a.pnl_pct - b.pnl_pct) : list;
-  }, [holdings, q, losersFirst]);
+  }, [holdings, q, losersFirst, sectors]);
 
   return (
     <div className="flex flex-col gap-3">
@@ -68,7 +79,7 @@ export function HoldingsTable({ holdings }: { holdings: HoldingRowData[] }) {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search stocks"
+            placeholder="Search stocks or sectors"
             className="h-10 w-full border border-ink bg-paper px-3 font-sans text-ui text-ink placeholder:text-ink-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           />
         </label>
@@ -92,7 +103,7 @@ export function HoldingsTable({ holdings }: { holdings: HoldingRowData[] }) {
           <div className="hidden md:block">
             <DataTable
               key={losersFirst ? "losers" : "all"}
-              columns={COLUMNS}
+              columns={cols}
               data={shown}
               caption="Your holdings"
               initialSort={losersFirst ? [] : [{ id: "value", desc: true }]}
@@ -104,8 +115,11 @@ export function HoldingsTable({ holdings }: { holdings: HoldingRowData[] }) {
               <li key={`${h.exchange}:${h.symbol}`} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 border-b border-rule py-3">
                 <span className="truncate font-semibold">{h.name}</span>
                 <span className="figures text-right">{rupees(h.value)}</span>
-                <span className="truncate font-sans text-caption text-ink-3">
-                  {h.symbol} · {pct(h.weight_pct)} of portfolio
+                <span className="flex min-w-0 flex-col gap-1">
+                  <span className="truncate font-sans text-caption text-ink-3">
+                    {h.symbol} · {pct(h.weight_pct)} of portfolio
+                  </span>
+                  <SectorPicker instrument={instrumentKey(h)} info={sectors[instrumentKey(h)] ?? { industry: null, source: null }} />
                 </span>
                 <span className={`figures text-right font-sans text-caption ${tone(h.pnl)}`}>
                   {signedRupees(h.pnl)} ({signedPct(h.pnl_pct)})

@@ -8,7 +8,9 @@ import { latestSnapshot } from "@/lib/holdings";
 import { kiteStatus } from "@/lib/kite";
 import { REFRESH_ERRORS } from "@/lib/refresh";
 import { currentUser } from "@/lib/supabase/server";
+import { sectorSplit, sectorsFor } from "@/lib/sectors";
 import { HoldingsTable } from "./HoldingsTable";
+import { WhereMoneySits } from "./WhereMoneySits";
 import { PullButton } from "./PullButton";
 
 export const metadata = { title: "Portfolio · Fund X-Ray" };
@@ -42,6 +44,8 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
     );
   }
 
+  const sectors = await sectorsFor(snap.holdings);
+  const groups = sectorSplit(snap.holdings, sectors);
   const t = snap.totals;
   const asOf = istTime(snap.taken_at, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
   const stale = kite.state !== "connected";
@@ -69,9 +73,14 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
         </div>
       </section>
 
+      <section className="flex flex-col gap-4 border-b border-ink py-7">
+        <SectionHeader title="Where the money sits" aside={`${groups.filter((g) => g.sector !== "Unmapped").length} sectors`} />
+        <WhereMoneySits groups={groups} asOf={asOf} />
+      </section>
+
       <section className="flex flex-col gap-4 py-7">
         <SectionHeader title="Holdings" aside={`Worth ${rupees(t.value)}`} />
-        <HoldingsTable holdings={snap.holdings} />
+        <HoldingsTable holdings={snap.holdings} sectors={sectors} />
         <p className="font-sans text-caption text-ink-3">
           Source: Zerodha Kite, holdings as of {asOf} IST. Totals worked out by Fund X-Ray; quantities include T1 shares. Shares bought today appear
           under Positions until tomorrow.
