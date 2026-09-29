@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import time
 
-from fund_xray_engine.nse import ARCHIVE, QUOTE_URL, looks_like_fund, parse_constituents, parse_quote_industry
+from fund_xray_engine.nse import ARCHIVE, QUOTE_REFERER, QUOTE_URL, looks_like_fund, parse_constituents, parse_quote_industry
 
 from common import db_select, db_upsert, fetch_text, nse_client, summary
 
@@ -64,9 +64,11 @@ if held:  # skip ones an earlier run already classified (keeps the weekly run sh
 summary(f"- {len(held)} held stocks aren't in the index lists; looking them up one by one")
 
 funds, found, missing = [], [], []
+reasons: dict[str, int] = {}
 with nse_client() as c:
     try:
-        c.get("https://www.nseindia.com/", headers={"Accept": "text/html"})  # NSE sets the cookies its API wants
+        c.get("https://www.nseindia.com/", headers={"Accept": "text/html"})
+        c.get("https://www.nseindia.com/get-quote/equity/RELIANCE", headers={"Accept": "text/html"})  # NSE sets the cookies its API wants
     except Exception as e:  # noqa: BLE001
         summary(f"- ⚠️ NSE home page didn't load ({type(e).__name__}); lookups may fail")
     for isin, h in held.items():
@@ -75,13 +77,22 @@ with nse_client() as c:
             funds.append({"isin": isin, "symbol": symbol, "company_name": name, "industry": "ETFs & funds", "source": "fund"})
             continue
         if h.get("exchange", "NSE") != "NSE":
-            missing.append(symbol)
+            missing.append(f"{symbol} (BSE only)")
             continue
-        try:
-            r = c.get(QUOTE_URL.format(symbol=symbol), headers={"Accept": "application/json", "Referer": f"https://www.nseindia.com/get-quotes/equity?symbol={symbol}"})
-            info = parse_quote_industry(r.json()) if r.status_code == 200 else None
-        except Exception:  # noqa: BLE001
-            info = None
+        info, why = None, ""
+        for series in ("EQ", "BE", "SM", "ST"):  # main board, trade-to-trade, SME
+            try:
+                r = c.get(QUOTE_URL.format(series=series, symbol=symbol),
+                          headers={"Accept": "application/json", "Referer": QUOTE_REFERER.format(symbol=symbol)})
+                why = f"HTTP {r.status_code}"
+                info = parse_quote_industry(r.json()) if r.status_code == 200 else None
+            except Exception as e:  # noqa: BLE001
+                why = type(e).__name__
+            if info:
+                break
+            time.sleep(0.4)
+        if not info:
+            reasons[why] = reasons.get(why, 0) + 1
         if info:
             found.append({"isin": isin, "symbol": symbol, "company_name": name, "source": "NSE quote", **info})
         else:
@@ -95,3 +106,5 @@ if rows:
 summary(f"- NSE quote page: {len(found)} classified; {len(funds)} ETFs/funds marked")
 if missing:
     summary(f"- Still unmapped (pick these in the app): {', '.join(sorted(missing))}")
+if reasons:
+    summary(f"- Quote lookups that failed, by reason: {reasons}")

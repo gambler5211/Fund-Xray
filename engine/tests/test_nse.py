@@ -55,6 +55,11 @@ def test_quote_industry_and_funds():
                                                  "industry": "Electrical Equipment", "basicIndustry": "Heavy Electrical Equipment"}})
     assert got == {"industry": "Capital Goods", "macro": "Industrials", "industry_detail": "Electrical Equipment",
                    "basic_industry": "Heavy Electrical Equipment"}
+    new = {"equityResponse": [{"secInfo": {"basicIndustry": "Dredging", "macro": "Services", "sector": "Services",
+                                            "industryInfo": "Engineering Services"}}]}
+    assert parse_quote_industry(new) == {"industry": "Services", "macro": "Services", "industry_detail": "Engineering Services",
+                                         "basic_industry": "Dredging"}
+    assert parse_quote_industry({"equityResponse": [{"secInfo": {"sector": "-", "basicIndustry": "-"}}]}) is None
     assert parse_quote_industry({"info": {}}) is None
     assert parse_quote_industry({"industryInfo": {"sector": "NA"}}) is None
     assert looks_like_fund("SILVERBEES", "Nippon India Silver ETF")

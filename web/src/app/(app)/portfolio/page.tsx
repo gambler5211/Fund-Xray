@@ -78,7 +78,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
         <WhereMoneySits groups={groups} asOf={asOf} />
       </section>
 
-      <section className="flex flex-col gap-4 py-7">
+      <section id="holdings" className="flex scroll-mt-4 flex-col gap-4 py-7">
         <SectionHeader title="Holdings" aside={`Worth ${rupees(t.value)}`} />
         <HoldingsTable holdings={snap.holdings} sectors={sectors} />
         <p className="font-sans text-caption text-ink-3">
