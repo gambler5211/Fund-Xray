@@ -70,7 +70,7 @@ export default function WelcomePage() {
           <a href="#how" className="no-underline">How it works</a>
           <a href="#checks" className="no-underline">What it checks</a>
           <a href="#privacy" className="no-underline">Privacy</a>
-          <Link href="/" className="border-b-2 border-accent pb-0.5 no-underline">Sign in</Link>
+          <Link href="/login" className="border-b-2 border-accent pb-0.5 no-underline">Sign in</Link>
         </nav>
       </header>
 
