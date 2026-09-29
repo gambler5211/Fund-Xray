@@ -30,7 +30,7 @@ export function SectorPicker({ instrument, info, demo = false }: { instrument: s
     };
   }, [open]);
 
-  if (info.source === "nse") return <span className="font-sans text-ui text-ink-2">{info.industry}</span>;
+  if (info.source === "nse" || info.source === "auto") return <span className="font-sans text-ui text-ink-2">{info.industry}</span>;
 
   async function save(industry: string | null) {
     if (demo) return setOpen(false);

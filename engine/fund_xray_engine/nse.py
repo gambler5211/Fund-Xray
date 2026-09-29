@@ -115,3 +115,33 @@ def sector_split(holdings: list[dict], sectors: dict[str, str | None]) -> list[d
         })
     out.sort(key=lambda g: (g["sector"] == "Unmapped", -g["value"]))
     return out
+
+
+QUOTE_URL = "https://www.nseindia.com/api/quote-equity?symbol={symbol}"
+
+
+def parse_quote_industry(payload: dict) -> dict | None:
+    """NSE's quote API → the four levels of its industry classification for one stock.
+
+    {"industryInfo": {"macro": "Industrials", "sector": "Capital Goods",
+                      "industry": "Electrical Equipment", "basicIndustry": "Heavy Electrical Equipment"}}
+    Returns {industry (sector level), macro, industry_detail, basic_industry}, or None when NSE
+    gives no classification (ETFs, some new listings).
+    """
+    info = (payload or {}).get("industryInfo") or {}
+    sector = (info.get("sector") or "").strip()
+    if not sector or sector.upper() in ("NA", "-"):
+        return None
+    clean = lambda v: (v or "").strip() or None  # noqa: E731
+    return {
+        "industry": sector,
+        "macro": clean(info.get("macro")),
+        "industry_detail": clean(info.get("industry")),
+        "basic_industry": clean(info.get("basicIndustry")),
+    }
+
+
+def looks_like_fund(symbol: str, name: str) -> bool:
+    """ETFs and index funds have no company sector (SILVERBEES, GOLDBEES, "Mirae Asset Nifty Metal ETF")."""
+    s, n = symbol.upper(), name.upper()
+    return s.endswith("BEES") or s.endswith("ETF") or " ETF" in f" {n}" or n.endswith(" BEES") or "INDEX FUND" in n

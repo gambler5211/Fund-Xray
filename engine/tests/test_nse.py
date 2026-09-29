@@ -46,3 +46,17 @@ def test_sector_split_adds_to_100():
     assert g[0]["share_pct"] == 80.0 and g[1]["share_pct"] == 20.0
     assert sum(x["share_pct"] for x in g) == 100.0
     assert [x["symbol"] for x in g[0]["holdings"]] == ["A", "B"]
+
+
+def test_quote_industry_and_funds():
+    from fund_xray_engine.nse import looks_like_fund, parse_quote_industry
+
+    got = parse_quote_industry({"industryInfo": {"macro": "Industrials", "sector": "Capital Goods",
+                                                 "industry": "Electrical Equipment", "basicIndustry": "Heavy Electrical Equipment"}})
+    assert got == {"industry": "Capital Goods", "macro": "Industrials", "industry_detail": "Electrical Equipment",
+                   "basic_industry": "Heavy Electrical Equipment"}
+    assert parse_quote_industry({"info": {}}) is None
+    assert parse_quote_industry({"industryInfo": {"sector": "NA"}}) is None
+    assert looks_like_fund("SILVERBEES", "Nippon India Silver ETF")
+    assert looks_like_fund("METAL", "Mirae Asset Nifty Metal ETF")
+    assert not looks_like_fund("DREDGECORP", "Dredging Corp Of India")

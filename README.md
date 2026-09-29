@@ -102,8 +102,10 @@ Check: totals on Portfolio match Kite Console to the rupee, and the page reads w
 Data comes from NSE's own published files, free, no extra login:
 
 - **Sectors:** NSE's index constituent lists (`ind_niftytotalmarket_list.csv` etc.) give each
-  company's industry at NSE's sector level ("Capital Goods", "Power", ...). Stocks not in any
-  list show **Unmapped**; click it to pick a sector (saved per user in `sector_overrides`).
+  company's industry at NSE's sector level ("Capital Goods", "Power", ...). Held stocks outside
+  those lists (smaller companies, recent listings) are then looked up one by one on NSE's quote
+  page, which gives all four levels; ETFs are marked "ETFs & funds". Anything left shows
+  **Unmapped**; click it to pick a sector (saved per user in `sector_overrides`).
 - **Index history:** one file per trading day, `ind_close_all_DDMMYYYY.csv`, with every index's
   close (plus P/E, P/B, dividend yield). Market holidays have no file.
 

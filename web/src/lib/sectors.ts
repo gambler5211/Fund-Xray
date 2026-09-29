@@ -1,6 +1,6 @@
 import { supabaseServer } from "@/lib/supabase/server";
 import type { HoldingRowData } from "@/lib/holdings";
-import { instrumentKey, type SectorMap } from "@/lib/sectorsShared";
+import { instrumentKey, looksLikeFund, type SectorMap } from "@/lib/sectorsShared";
 
 export * from "@/lib/sectorsShared";
 
@@ -23,7 +23,13 @@ export async function sectorsFor(holdings: HoldingRowData[]): Promise<SectorMap>
     const key = instrumentKey(h);
     const yours = own.get(key);
     const nse = (h.isin && isinMap.get(h.isin)) || symMap.get(h.symbol);
-    out[key] = yours ? { industry: yours, source: "you" } : nse ? { industry: nse, source: "nse" } : { industry: null, source: null };
+    out[key] = yours
+      ? { industry: yours, source: "you" }
+      : nse
+        ? { industry: nse, source: "nse" }
+        : looksLikeFund(h.symbol, h.name)
+          ? { industry: "ETFs & funds", source: "auto" }
+          : { industry: null, source: null };
   }
   return out;
 }
