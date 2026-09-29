@@ -72,6 +72,21 @@ def db_select(table: str, params: dict) -> list[dict]:
     return r.json()
 
 
+def log_run(job: str, started_at: str, status: str, summary_line: str, details: dict | None = None) -> None:
+    """One row in job_runs, which the app's footer reads to show how fresh the data is."""
+    try:
+        db_insert("job_runs", [{"job": job, "started_at": started_at, "status": status,
+                                      "summary": summary_line[:500], "details": details or {}}])
+    except Exception as e:  # noqa: BLE001  (logging must never hide the job's own result)
+        print(f"Couldn't log the run: {e}")
+
+
+def db_insert(table: str, rows: list[dict]) -> None:
+    r = httpx.post(f"{SUPABASE_URL}/rest/v1/{table}", headers={**_db_headers(), "Prefer": "return=minimal"}, json=rows, timeout=60)
+    if r.status_code >= 300:
+        raise RuntimeError(f"insert {table}: HTTP {r.status_code} {r.text[:300]}")
+
+
 def summary(line: str) -> None:
     """A line in the GitHub Actions run summary (and the log)."""
     print(line)

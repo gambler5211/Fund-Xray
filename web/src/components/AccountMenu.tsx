@@ -38,7 +38,7 @@ export function AccountMenu({ name, email }: { name?: string | null; email?: str
       </button>
       {open ? (
         <div role="menu" className="absolute right-0 top-9 z-30 flex w-60 flex-col border border-ink bg-paper py-1 shadow-[4px_4px_0_var(--rule)]">
-          <div className="flex flex-col gap-0.5 border-b border-rule px-3 pt-2 pb-2.5">
+          <div className="flex flex-col gap-0.5 border-b border-rule px-3 pt-2 pb-3">
             {signedIn ? (
               <>
                 {name ? <span className="font-sans text-ui font-semibold text-ink">{name}</span> : null}

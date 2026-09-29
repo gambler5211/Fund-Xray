@@ -15,7 +15,7 @@ export function Toast({ message, onDone, tone = "neutral" }: { message: string |
       {message ? (
         <div
           role={tone === "error" ? "alert" : "status"}
-          className={`fade-in pointer-events-auto border px-4 py-2.5 font-sans text-ui font-semibold shadow-[4px_4px_0_var(--rule)] ${
+          className={`fade-in pointer-events-auto border px-4 py-3 font-sans text-ui font-semibold shadow-[4px_4px_0_var(--rule)] ${
             tone === "error" ? "border-loss bg-paper text-loss" : "border-ink bg-ink text-paper"
           }`}
         >

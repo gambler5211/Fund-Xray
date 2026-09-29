@@ -8,7 +8,7 @@ export function HoldingsSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div role="status" aria-label="Loading your holdings" className="flex flex-col">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center justify-between border-b border-rule py-3.5">
+        <div key={i} className="flex items-center justify-between border-b border-rule py-3">
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-44" />
             <Skeleton className="h-3 w-28" />

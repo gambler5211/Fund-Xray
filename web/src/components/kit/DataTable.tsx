@@ -88,7 +88,7 @@ export function DataTable<T>({
               {row.getVisibleCells().map((cell) => (
                 <td
                   key={cell.id}
-                  className={`px-2 py-2.5 ${cell.column.columnDef.meta?.align === "right" ? "figures text-right" : ""}`}
+                  className={`px-2 py-3 ${cell.column.columnDef.meta?.align === "right" ? "figures text-right" : ""}`}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>

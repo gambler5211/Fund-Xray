@@ -22,7 +22,7 @@ export function AllocationBar({
     .map((p) => `${pct(p.share)} ${QUADRANTS[p.quadrant].label.toLowerCase()}`)
     .join(", ");
   return (
-    <div className="flex items-center gap-2.5" role="img" aria-label={`${label}: ${spoken}`}>
+    <div className="flex items-center gap-3" role="img" aria-label={`${label}: ${spoken}`}>
       <span className={`w-[72px] shrink-0 font-sans text-caption ${muted ? "text-ink-3" : "font-semibold"}`}>{label}</span>
       <div className={`flex h-[18px] flex-1 gap-0.5 ${muted ? "opacity-55" : ""}`} aria-hidden>
         {parts

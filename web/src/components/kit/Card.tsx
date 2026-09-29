@@ -23,7 +23,7 @@ export function Card({
       ) : null}
       <div className="px-4 py-4 text-body leading-relaxed text-ink-2 md:px-5">{children}</div>
       {footer ? (
-        <footer className="border-t border-rule px-4 py-2.5 font-sans text-caption text-ink-3 md:px-5">{footer}</footer>
+        <footer className="border-t border-rule px-4 py-3 font-sans text-caption text-ink-3 md:px-5">{footer}</footer>
       ) : null}
     </section>
   );

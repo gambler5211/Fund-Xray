@@ -92,7 +92,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
           <SectionHeader title="Positions today" aside={`${countWords(snap.positions.length, "position")}, ${signedRupees(t.positions_pnl)}`} />
           <ul className="flex flex-col">
             {snap.positions.map((p) => (
-              <li key={`${p.exchange}:${p.symbol}:${p.product}`} className="flex items-baseline justify-between gap-4 border-b border-rule py-2.5">
+              <li key={`${p.exchange}:${p.symbol}:${p.product}`} className="flex items-baseline justify-between gap-4 border-b border-rule py-3">
                 <span className="flex flex-col">
                   <span className="font-semibold">{p.symbol}</span>
                   <span className="font-sans text-caption text-ink-3">
