@@ -6,6 +6,10 @@ import { HoldingRow, HoldingsHeader, type Holding } from "@/components/kit/Holdi
 import { QuadrantChip } from "@/components/kit/QuadrantChip";
 import { ErrorState, HoldingsSkeleton, SampleLabel, Skeleton } from "@/components/kit/States";
 import { QUADRANTS, QUADRANT_ORDER } from "@/lib/quadrant";
+import { Badge, QuadrantBadge } from "@/components/kit/Badge";
+import { Card } from "@/components/kit/Card";
+import { StatTile } from "@/components/kit/StatTile";
+import { DemoChart, DemoTable } from "./Demos";
 
 export const metadata = { title: "Design kit · Fund X-Ray", robots: { index: false } };
 
@@ -141,6 +145,49 @@ export default function TokensPage() {
             <HoldingRow key={h.name} h={h} />
           ))}
         </ul>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Stat tiles" aside={<SampleLabel />} />
+        <div className="grid gap-6 sm:grid-cols-3">
+          <StatTile label="Portfolio value" value={<Rupees value={2891670} short />} change={0.62} changeLabel="today" asOf="29 Sep, 3:30 pm" />
+          <StatTile label="In fading sectors" value="38.9%" change={4.1} changeLabel="vs last week" asOf="Saturday edition" />
+          <StatTile label="Effective bets" value="3.2" asOf="58 stocks" />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Badges" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="gain">Up</Badge>
+          <Badge tone="loss">Down</Badge>
+          <Badge>Unmapped</Badge>
+          {QUADRANT_ORDER.map((k) => (
+            <QuadrantBadge key={k} quadrant={k} />
+          ))}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Card (for asides)" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card title="How to read this" actions={<Button variant="secondary">Hide</Button>} footer="Updated every Saturday">
+            A sector is Leading when it beats the Nifty 500 and the gap is widening.
+          </Card>
+          <Card>A card without a header, for a short note.</Card>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHeader title="Sortable table" aside={<SampleLabel />} />
+        <p className="font-sans text-caption text-ink-3">Click a column title to sort. The header stays in place while the rows scroll.</p>
+        <DemoTable />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHeader title="Chart theme" aside={<SampleLabel />} />
+        <p className="font-sans text-caption text-ink-3">Colours come from the same tokens; switch Day / Night to see it follow.</p>
+        <DemoChart />
       </section>
 
       <section className="flex flex-col gap-4">
