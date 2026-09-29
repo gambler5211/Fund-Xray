@@ -7,11 +7,18 @@ export const INDUSTRIES = [
   "Consumer Durables", "Consumer Services", "Diversified", "Fast Moving Consumer Goods", "Financial Services",
   "Forest Materials", "Healthcare", "Information Technology", "Media Entertainment & Publication",
   "Metals & Mining", "Oil Gas & Consumable Fuels", "Power", "Realty", "Services", "Telecommunication",
-  "Textiles", "Utilities",
+  "Textiles", "Utilities", "ETFs & funds",
 ] as const;
 
-export type SectorInfo = { industry: string | null; source: "nse" | "you" | null };
+export type SectorInfo = { industry: string | null; source: "nse" | "you" | "auto" | null };
 export type SectorMap = Record<string, SectorInfo>; // key "NSE:SYMBOL"
+
+/** ETFs and index funds have no company sector (SILVERBEES, GOLDBEES, "Mirae Asset Nifty Metal ETF"). */
+export function looksLikeFund(symbol: string, name: string) {
+  const s = symbol.toUpperCase();
+  const n = ` ${name.toUpperCase()}`;
+  return s.endsWith("BEES") || s.endsWith("ETF") || n.includes(" ETF") || n.endsWith(" BEES") || n.includes("INDEX FUND");
+}
 
 export const instrumentKey = (h: { exchange: string; symbol: string }) => `${h.exchange}:${h.symbol}`;
 
