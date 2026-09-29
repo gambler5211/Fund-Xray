@@ -117,26 +117,37 @@ def sector_split(holdings: list[dict], sectors: dict[str, str | None]) -> list[d
     return out
 
 
-QUOTE_URL = "https://www.nseindia.com/api/quote-equity?symbol={symbol}"
+# NSE's quote page loads its data from this endpoint (the older /api/quote-equity is retired).
+QUOTE_URL = "https://www.nseindia.com/api/NextApi/apiClient/GetQuoteApi?functionName=getSymbolData&marketType=N&series={series}&symbol={symbol}"
+QUOTE_REFERER = "https://www.nseindia.com/get-quote/equity/{symbol}"
 
 
 def parse_quote_industry(payload: dict) -> dict | None:
-    """NSE's quote API → the four levels of its industry classification for one stock.
+    """NSE's quote data → the four levels of its industry classification for one stock.
 
-    {"industryInfo": {"macro": "Industrials", "sector": "Capital Goods",
-                      "industry": "Electrical Equipment", "basicIndustry": "Heavy Electrical Equipment"}}
+    {"equityResponse": [{"secInfo": {"macro": "Services", "sector": "Services",
+        "industryInfo": "Engineering Services", "basicIndustry": "Dredging"}}]}
+    (The retired API nested these under "industryInfo" as an object; both shapes are read.)
     Returns {industry (sector level), macro, industry_detail, basic_industry}, or None when NSE
     gives no classification (ETFs, some new listings).
     """
-    info = (payload or {}).get("industryInfo") or {}
-    sector = (info.get("sector") or "").strip()
-    if not sector or sector.upper() in ("NA", "-"):
+    payload = payload or {}
+    info: dict = {}
+    rows = payload.get("equityResponse")
+    if isinstance(rows, list) and rows:
+        info = (rows[0] or {}).get("secInfo") or {}
+        industry = info.get("industryInfo")
+    else:  # older shape
+        info = payload.get("industryInfo") or {}
+        industry = info.get("industry")
+    clean = lambda v: (v or "").strip() if isinstance(v, str) and v.strip() not in ("", "-", "NA") else None  # noqa: E731
+    sector = clean(info.get("sector"))
+    if not sector:
         return None
-    clean = lambda v: (v or "").strip() or None  # noqa: E731
     return {
         "industry": sector,
         "macro": clean(info.get("macro")),
-        "industry_detail": clean(info.get("industry")),
+        "industry_detail": clean(industry if isinstance(industry, str) else None),
         "basic_industry": clean(info.get("basicIndustry")),
     }
 

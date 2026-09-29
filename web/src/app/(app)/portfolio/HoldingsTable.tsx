@@ -1,7 +1,7 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "@/components/kit/DataTable";
 import { count, pct, price, rupees, signedPct, signedRupees } from "@/lib/format";
 import type { HoldingRowData } from "@/lib/holdings";
@@ -63,6 +63,13 @@ export function HoldingsTable({ holdings, sectors }: { holdings: HoldingRowData[
   const cols = useMemo(() => columns(sectors), [sectors]);
   const [q, setQ] = useState("");
   const [losersFirst, setLosersFirst] = useState(false);
+
+  // "Pick sectors for N stocks" above sets the search to "unmapped"
+  useEffect(() => {
+    const on = (e: Event) => setQ(String((e as CustomEvent).detail ?? ""));
+    window.addEventListener("fx:holdings-search", on);
+    return () => window.removeEventListener("fx:holdings-search", on);
+  }, []);
 
   const shown = useMemo(() => {
     const needle = q.trim().toLowerCase();
