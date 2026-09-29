@@ -1,0 +1,5 @@
+# Marks this folder as a Supabase project so the GitHub integration picks up
+# supabase/migrations/ when main changes. Production deploys only apply new
+# migrations; auth and API settings here are ignored, so the dashboard stays the
+# source of truth for those.
+project_id = "fund-xray"
