@@ -86,6 +86,17 @@ One-time setup:
 API: `GET /kite/login-url`, `POST /kite/session`, `GET /kite/status`, `GET /kite/profile`,
 `DELETE /kite/session`. All need a signed-in user.
 
+## Day 5: Holdings and the Portfolio page
+
+`POST /holdings/refresh` pulls holdings and positions from Kite, adds company names from Kite's
+instruments list, and hands everything to `engine.build_snapshot`, which works out invested,
+value, today's change, total return and weights with exact decimal arithmetic. The API saves the
+result through `save_holdings_snapshot` (one snapshot per day, as you). The pull runs right after
+connecting and on **Refresh**. Nothing is a fixed list: exits drop out, new buys appear.
+Quantities include T1 shares, as Kite Console does; shares bought today show under Positions.
+
+Check: totals on Portfolio match Kite Console to the rupee, and the page reads well at 390 px.
+
 ## Run it locally
 
 Web (Node 20 or newer):

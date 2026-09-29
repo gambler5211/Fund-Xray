@@ -5,6 +5,7 @@ Modules arrive by day: kite (Day 4-5), sectors (Day 6), prices (Day 6), rotation
 """
 
 from .defaults import DEFAULT_SETTINGS, UserSettings
+from .portfolio import build_snapshot, company_name
 
-__all__ = ["DEFAULT_SETTINGS", "UserSettings"]
+__all__ = ["DEFAULT_SETTINGS", "UserSettings", "build_snapshot", "company_name"]
 __version__ = "0.1.0"

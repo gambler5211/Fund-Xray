@@ -2,7 +2,7 @@
 
 Public:  /, /health
 Signed in (Supabase token checked on every request): everything on `private`, starting with /me.
-Kite (Day 4): /kite/login-url, /kite/session, /kite/status, /kite/profile. Holdings arrive on Day 5.
+Kite (Day 4): /kite/login-url, /kite/session, /kite/status, /kite/profile. Holdings (Day 5): POST /holdings/refresh, GET /holdings.
 """
 
 import logging
@@ -16,6 +16,7 @@ from app import crypto
 from app.auth import User, current_user
 from app.config import settings
 from app.routes_kite import router as kite_router
+from app.routes_holdings import router as holdings_router
 
 log = logging.getLogger("fund_xray")
 
@@ -71,4 +72,5 @@ def me(user: User = Depends(current_user)) -> dict:
 
 app.include_router(private)
 app.include_router(kite_router)
+app.include_router(holdings_router)
 

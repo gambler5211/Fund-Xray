@@ -88,6 +88,12 @@ def get(access_token: str, path: str) -> dict:
     return r.json()["data"]
 
 
+def get_text(access_token: str, path: str) -> str:
+    """An authenticated GET that returns text, e.g. the instruments CSV."""
+    r = _call("GET", path, headers={"Authorization": f"token {_require_key()}:{access_token}"})
+    return r.text
+
+
 def invalidate(access_token: str) -> None:
     """Log the token out at Kite. Best effort: a failure here doesn't block disconnecting."""
     try:

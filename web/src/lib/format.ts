@@ -67,3 +67,19 @@ export function istTime(value: string | number | Date, opts: Intl.DateTimeFormat
     .toLocaleString("en-IN", { timeZone: "Asia/Kolkata", ...opts })
     .replace(/\b(am|pm)\b/g, (m) => m.toUpperCase());
 }
+
+/** ₹1,234.50 — a share price, always two decimals. */
+export function price(n: number) {
+  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+/** 1,250 — a share count with Indian grouping. */
+export function count(n: number) {
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(n);
+}
+
+const WORDS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+/** "Ten stocks", "58 stocks": words up to ten, as a newspaper would. */
+export function countWords(n: number, noun: string, plural = `${noun}s`) {
+  return `${n <= 10 ? WORDS[n] : count(n)} ${n === 1 ? noun : plural}`;
+}

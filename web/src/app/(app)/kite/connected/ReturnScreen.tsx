@@ -4,16 +4,22 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Kicker } from "@/components/Section";
 import { HoldingsSkeleton } from "@/components/kit/States";
+import { refreshHoldings } from "@/lib/refresh";
 
 /**
- * Shown for a moment after Zerodha sends you back: a check mark and the holdings skeleton, then
- * straight on to Portfolio. From Day 5 the holdings pull runs here before moving on.
+ * Shown after Zerodha sends you back: a check mark and the holdings skeleton while the first pull
+ * runs, then straight on to Portfolio (with a note if the pull failed; the connection still stands).
  */
 export function ReturnScreen({ kiteUserId }: { kiteUserId: string | null }) {
   const router = useRouter();
   useEffect(() => {
-    const t = setTimeout(() => router.replace("/portfolio"), 1800);
-    return () => clearTimeout(t);
+    let gone = false;
+    refreshHoldings().then((r) => {
+      if (!gone) router.replace(r.ok ? "/portfolio" : `/portfolio?pull=${r.code}`);
+    });
+    return () => {
+      gone = true;
+    };
   }, [router]);
 
   return (
