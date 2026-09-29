@@ -1,3 +1,5 @@
+import { KitePill } from "@/components/KitePill";
+import { KiteCard } from "@/components/KiteCard";
 import { SettingsForm } from "../settings/SettingsForm";
 import { AccountCard } from "../settings/AccountCard";
 import { DEFAULT_SETTINGS } from "@/lib/settings";
@@ -223,10 +225,22 @@ export default function TokensPage() {
       </section>
 
       <section className="flex flex-col gap-4">
+        <SectionHeader title="Kite status" aside={<SampleLabel />} />
+        <div className="flex flex-wrap gap-8 font-sans text-[13px] text-ink-3">
+          <KitePill status={{ state: "connected", kiteUserId: "AB1234", connectedAt: new Date(Date.now() - 3 * 3600e3).toISOString(), expiresAt: new Date(Date.now() + 8 * 3600e3).toISOString() }} />
+          <KitePill status={{ state: "connected", kiteUserId: "AB1234", connectedAt: new Date(Date.now() - 20 * 3600e3).toISOString(), expiresAt: new Date(Date.now() + 40 * 60e3).toISOString() }} />
+          <KitePill status={{ state: "expired", kiteUserId: "AB1234", expiresAt: new Date(Date.now() - 3600e3).toISOString() }} />
+          <KitePill status={{ state: "never" }} />
+        </div>
+        <KiteCard status={{ state: "never" }} />
+        <KiteCard status={{ state: "expired" }} />
+      </section>
+
+      <section className="flex flex-col gap-4">
         <SectionHeader title="Settings form" aside={<SampleLabel>Demo, saves nowhere</SampleLabel>} />
         <SettingsForm demo initial={DEFAULT_SETTINGS} />
         <div className="md:max-w-[calc(50%-16px)]">
-          <AccountCard demo name="Sample Reader" email="reader@example.com" kite={null} />
+          <AccountCard demo name="Sample Reader" email="reader@example.com" kite={{ state: "connected", kiteUserId: "AB1234", connectedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 8 * 3600e3).toISOString() }} />
         </div>
       </section>
     </div>

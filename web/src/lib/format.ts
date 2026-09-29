@@ -60,3 +60,10 @@ export function signedRupees(n: number) {
 export function pct(n: number, digits = 1) {
   return `${n.toFixed(digits)}%`;
 }
+
+/** A date/time in India time, with AM/PM in capitals ("30 Sept, 6:00 AM"). */
+export function istTime(value: string | number | Date, opts: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit" }): string {
+  return new Date(value)
+    .toLocaleString("en-IN", { timeZone: "Asia/Kolkata", ...opts })
+    .replace(/\b(am|pm)\b/g, (m) => m.toUpperCase());
+}

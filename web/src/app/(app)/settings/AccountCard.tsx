@@ -1,15 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card } from "@/components/kit/Card";
 import { Button } from "@/components/kit/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { istTime } from "@/lib/format";
+import type { KiteStatus as Kite } from "@/lib/kite";
 import { INPUT } from "./SettingsForm";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
-type Kite = { expires_at: string } | null;
 
 /** Account: who you are, Kite connection, theme, a live check that the API accepts your sign-in, delete. */
 export function AccountCard({ name, email, kite, demo = false }: { name: string | null; email: string; kite: Kite; demo?: boolean }) {
@@ -23,7 +24,7 @@ export function AccountCard({ name, email, kite, demo = false }: { name: string 
           </span>
         </Row>
         <Row term="Zerodha (Kite)">
-          <KiteStatus kite={kite} />
+          <KiteStatus kite={kite} demo={demo} />
         </Row>
         <Row term="Theme">
           <ThemeToggle />
@@ -54,12 +55,52 @@ function Row({ term, children }: { term: string; children: React.ReactNode }) {
   );
 }
 
-function KiteStatus({ kite }: { kite: Kite }) {
-  if (!kite) return <span className="font-sans text-ui text-ink-3">Not connected · arrives on Day 4</span>;
-  const expires = new Date(kite.expires_at);
-  const live = expires.getTime() > Date.now();
-  const when = expires.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
-  return <span className={`font-sans text-ui ${live ? "text-gain" : "text-ink-3"}`}>{live ? `Connected until ${when}` : "Expired · reconnect"}</span>;
+function KiteStatus({ kite, demo }: { kite: Kite; demo: boolean }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function disconnect() {
+    if (demo) return;
+    setBusy(true);
+    setError(null);
+    const { data } = await supabaseBrowser().auth.getSession();
+    try {
+      const r = await fetch(`${API_URL}/kite/session`, { method: "DELETE", headers: { Authorization: `Bearer ${data.session?.access_token ?? ""}` } });
+      if (!r.ok) throw new Error(String(r.status));
+      router.refresh();
+    } catch {
+      setError("Couldn't disconnect. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const link = "font-sans text-ui";
+  if (kite.state === "never") {
+    return (
+      <span className="flex items-center gap-3 font-sans text-ui text-ink-3">
+        Not connected <a href="/kite/connect" className={link}>Connect</a>
+      </span>
+    );
+  }
+  const until = kite.expiresAt
+    ? istTime(kite.expiresAt, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })
+    : "";
+  return (
+    <span className="flex flex-col items-end gap-1 text-right">
+      <span className={`font-sans text-ui ${kite.state === "connected" ? "text-gain" : "text-ink-3"}`}>
+        {kite.state === "connected" ? `${kite.kiteUserId ?? "Connected"} · until ${until}` : "Expired at 6 AM"}
+      </span>
+      <span className="flex gap-3">
+        {kite.state === "expired" ? <a href="/kite/connect" className={link}>Reconnect</a> : null}
+        <button type="button" onClick={disconnect} disabled={busy || demo} className="font-sans text-ui text-loss underline decoration-loss underline-offset-4 disabled:opacity-50">
+          {busy ? "Disconnecting…" : "Disconnect"}
+        </button>
+      </span>
+      {error ? <span role="alert" className="font-sans text-caption text-loss">{error}</span> : null}
+    </span>
+  );
 }
 
 function ApiCheck({ demo }: { demo: boolean }) {

@@ -12,13 +12,20 @@ class Settings(BaseSettings):
 
     # Day 3: Supabase. The URL is enough to check sign-in tokens (public signing keys).
     supabase_url: str | None = None  # e.g. https://dgjbladcfysjncciukhg.supabase.co
-    supabase_secret_key: str | None = None  # sb_secret_...; used from Day 4 to write Kite tokens
+    # Public key (sb_publishable_...). The API calls Supabase as the signed-in user, so row-level
+    # security applies and no secret key is needed.
+    supabase_publishable_key: str | None = None
 
     # Day 4: Kite Connect
     kite_api_key: str | None = None
     kite_api_secret: str | None = None
-    kite_redirect_url: str = "http://localhost:8000/kite/callback"
+    # Informational: Kite uses the redirect URL registered on the Kite app, which must be the
+    # web app's /kite/callback (e.g. https://fund-xray-theta.vercel.app/kite/callback).
+    kite_redirect_url: str | None = None
     token_encryption_key: str | None = None  # Fernet key for Kite access tokens
+    # Kite addresses; only changed to point tests at a stand-in
+    kite_api_url: str = "https://api.kite.trade"
+    kite_login_url: str = "https://kite.zerodha.com/connect/login"
 
     @property
     def web_origins(self) -> list[str]:

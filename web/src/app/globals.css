@@ -23,6 +23,7 @@
   --q-weakening: #8a5a12;
   --q-lagging: #a3362b;
   --on-fill: #ffffff;        /* text on a coloured fill */
+  --warn: #8a5a12;           /* time running out (e.g. Kite expires soon); not a quadrant */
   color-scheme: light;
 }
 
@@ -42,6 +43,7 @@
   --q-weakening: #d4a24c;
   --q-lagging: #e0786d;
   --on-fill: #1a1917;
+  --warn: #d4a24c;
   color-scheme: dark;
 }
 
@@ -61,6 +63,7 @@
   --color-q-weakening: var(--q-weakening);
   --color-q-lagging: var(--q-lagging);
   --color-on-fill: var(--on-fill);
+  --color-warn: var(--warn);
 
   --font-serif: "Newsreader Variable", Georgia, serif;
   --font-sans: "Source Sans 3", system-ui, sans-serif;

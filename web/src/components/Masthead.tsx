@@ -1,22 +1,21 @@
 import Link from "next/link";
+import type { KiteStatus } from "@/lib/kite";
 import { AccountMenu } from "./AccountMenu";
+import { KitePill } from "./KitePill";
 import { EditionDate } from "./EditionDate";
 import { RefreshButton } from "./RefreshButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { TopNav } from "./TopNav";
 
-export function Masthead({ user }: { user?: { name: string | null; email: string } | null }) {
+export function Masthead({ user, kite }: { user?: { name: string | null; email: string } | null; kite?: KiteStatus | null }) {
   return (
     <header className="pt-4 md:pt-7">
       {/* Date line */}
       <div className="flex items-center justify-between gap-4 pb-3 font-sans text-caption text-ink-3 md:text-[13px]">
         <EditionDate />
         <div className="flex items-center gap-3 md:gap-4">
-          <span className="flex items-center gap-2">
-            <span aria-hidden className="h-2 w-2 rounded-full bg-ink-3" />
-            Kite not connected
-          </span>
-          <RefreshButton />
+          <KitePill status={kite ?? null} />
+          <RefreshButton kiteConnected={kite?.state === "connected"} />
           <ThemeToggle />
           <AccountMenu name={user?.name} email={user?.email} />
         </div>
