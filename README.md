@@ -97,6 +97,32 @@ Quantities include T1 shares, as Kite Console does; shares bought today show und
 
 Check: totals on Portfolio match Kite Console to the rupee, and the page reads well at 390 px.
 
+## Day 6: Sectors and index history (from NSE)
+
+Data comes from NSE's own published files, free, no extra login:
+
+- **Sectors:** NSE's index constituent lists (`ind_niftytotalmarket_list.csv` etc.) give each
+  company's industry at NSE's sector level ("Capital Goods", "Power", ...). Stocks not in any
+  list show **Unmapped**; click it to pick a sector (saved per user in `sector_overrides`).
+- **Index history:** one file per trading day, `ind_close_all_DDMMYYYY.csv`, with every index's
+  close (plus P/E, P/B, dividend yield). Market holidays have no file.
+
+These downloads run as GitHub Actions jobs (`.github/workflows/nse-data.yml`, scripts in `jobs/`)
+because they write shared reference data with the Supabase **secret** key, which lives only in
+GitHub secrets.
+
+One-time setup:
+
+1. Supabase → Project settings → API Keys → create a **secret key** (`sb_secret_...`); add it as
+   the GitHub repository **secret** `SUPABASE_SECRET_KEY`.
+2. Actions → NSE data → Run workflow → `probe`. It downloads a recent and a 3-year-old file and
+   the sector list, writes nothing, and says whether NSE lets GitHub's servers through.
+3. Run `sectors`, then `backfill` (about 15 minutes for 3 years; safe to re-run, it skips days
+   already saved).
+
+The 25 tracked indices are in `tracked_indices` (migration `20260930030000`), keyed by NSE's
+index name.
+
 ## Run it locally
 
 Web (Node 20 or newer):

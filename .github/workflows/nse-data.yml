@@ -1,0 +1,62 @@
+# NSE data jobs: sectors for holdings and daily index history.
+#
+# Run from Actions → "NSE data" → Run workflow, choosing the job:
+#   probe     can GitHub's servers download NSE's files? Writes nothing. Run this first.
+#   sectors   refresh industry_map from NSE's index constituent lists
+#   backfill  fill 3 years of index_prices (≈15 minutes; resumable, safe to re-run)
+#
+# Needs the repository secret SUPABASE_SECRET_KEY (Supabase → Project settings → API Keys →
+# Secret keys). It stays in GitHub; Cloud Run and the web app never see it.
+name: NSE data
+
+on:
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Which job to run
+        type: choice
+        options: [probe, sectors, backfill]
+        default: probe
+      years:
+        description: Years of history for backfill
+        default: "3"
+  schedule:
+    - cron: "30 2 * * 0"   # Sundays 08:00 IST: refresh sectors (NSE updates constituents twice a year, plus new listings)
+
+concurrency:
+  group: nse-data
+  cancel-in-progress: false
+
+env:
+  SUPABASE_URL: https://dgjbladcfysjncciukhg.supabase.co
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r jobs/requirements.txt
+
+      - name: Probe NSE access
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'probe'
+        working-directory: jobs
+        run: python probe_nse.py
+
+      - name: Import sectors
+        if: github.event_name == 'schedule' || inputs.job == 'sectors'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python import_sectors.py
+
+      - name: Backfill index prices
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'backfill'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          YEARS: ${{ inputs.years }}
+        run: python backfill_index_prices.py --years "$YEARS"
