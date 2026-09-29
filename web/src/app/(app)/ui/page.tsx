@@ -1,6 +1,13 @@
-import { Kicker } from "@/components/Section";
+import { Kicker, EmptyState, SectionHeader } from "@/components/Section";
+import { AllocationBar, QuadrantLegend } from "@/components/kit/AllocationBar";
+import { Button, LinkButton } from "@/components/kit/Button";
+import { Change, Rupees, Share } from "@/components/kit/Figures";
+import { HoldingRow, HoldingsHeader, type Holding } from "@/components/kit/HoldingRow";
+import { QuadrantChip } from "@/components/kit/QuadrantChip";
+import { ErrorState, HoldingsSkeleton, SampleLabel, Skeleton } from "@/components/kit/States";
+import { QUADRANTS, QUADRANT_ORDER } from "@/lib/quadrant";
 
-export const metadata = { title: "Design tokens · Fund X-Ray", robots: { index: false } };
+export const metadata = { title: "Design kit · Fund X-Ray", robots: { index: false } };
 
 const COLOURS = [
   ["paper", "bg-paper"],
@@ -27,6 +34,13 @@ const TYPE = [
   ["ui · 14", "text-ui font-sans"],
   ["caption · 12", "text-caption font-sans"],
 ] as const;
+
+const SAMPLE: Holding[] = [
+  { name: "NTPC", sector: "Power", quadrant: "leading", value: 40572, dayChangePct: 0.84, weight: 14.0 },
+  { name: "Coal India", sector: "Metals & Mining", quadrant: "improving", value: 30916, dayChangePct: -0.71, weight: 10.7 },
+  { name: "KPI Green Energy", sector: "Power", quadrant: "weakening", value: 21648, dayChangePct: -2.4, weight: 7.5 },
+  { name: "A very long company name that has to be cut off politely", sector: "Capital Goods", quadrant: "lagging", value: 18240, dayChangePct: 0, weight: 6.3 },
+];
 
 /** Hidden review page: every token in the current theme. Switch day/night in the masthead to check both. */
 export default function TokensPage() {
@@ -62,6 +76,100 @@ export default function TokensPage() {
           <div className="flex justify-between"><span>KPI Green Energy</span><span>₹21,648 <span className="text-loss">−2.40%</span></span></div>
         </div>
         <p className="font-sans text-caption text-ink-3">Sample figures to check tabular alignment.</p>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Figures, kit version" aside={<SampleLabel />} />
+        <dl className="flex flex-col gap-1 text-body">
+          {[
+            ["Rupees, full", <Rupees key="a" value={289167} />],
+            ["Rupees, short (lakh)", <Rupees key="b" value={289167} short />],
+            ["Rupees, short (crore)", <Rupees key="c" value={12400000} short />],
+            ["Gain", <Change key="d" value={2.29} />],
+            ["Loss", <Change key="e" value={-0.71} />],
+            ["Flat", <Change key="f" value={0} />],
+            ["Share of portfolio", <Share key="g" value={38.9} />],
+          ].map(([k, v]) => (
+            <div key={k as string} className="flex justify-between border-b border-rule pb-1">
+              <dt>{k}</dt>
+              <dd>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Quadrants" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {QUADRANT_ORDER.map((k) => (
+            <div key={k} className="flex flex-col gap-1 border-t-2 border-ink pt-2">
+              <QuadrantChip quadrant={k} />
+              <span className="font-sans text-caption text-ink-3">{QUADRANTS[k].blurb}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHeader title="Allocation bar" aside={<SampleLabel />} />
+        <AllocationBar
+          label="You"
+          parts={[
+            { quadrant: "leading", share: 43.6 },
+            { quadrant: "improving", share: 17.5 },
+            { quadrant: "weakening", share: 38.9 },
+          ]}
+        />
+        <AllocationBar
+          label="Nifty 500"
+          muted
+          parts={[
+            { quadrant: "leading", share: 41 },
+            { quadrant: "improving", share: 35 },
+            { quadrant: "weakening", share: 15 },
+            { quadrant: "lagging", share: 9 },
+          ]}
+        />
+        <QuadrantLegend />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHeader title="Holdings" aside={<SampleLabel />} />
+        <HoldingsHeader />
+        <ul>
+          {SAMPLE.map((h) => (
+            <HoldingRow key={h.name} h={h} />
+          ))}
+        </ul>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Buttons" />
+        <div className="flex flex-wrap items-center gap-3">
+          <Button>Connect Zerodha</Button>
+          <Button variant="secondary">Refresh</Button>
+          <Button disabled>Not yet</Button>
+          <LinkButton href="/settings" variant="secondary">Open settings</LinkButton>
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Loading, empty and error" />
+        <HoldingsSkeleton rows={3} />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-72 max-w-full" />
+          <Skeleton className="h-4 w-full max-w-[60ch]" />
+        </div>
+        <EmptyState
+          title="No holdings yet"
+          body="Connect Zerodha and your holdings appear here, grouped by sector."
+          action={<Button>Connect Zerodha</Button>}
+        />
+        <ErrorState
+          title="We couldn't reach Zerodha"
+          body="Your saved holdings are still here, last updated yesterday. Reconnect to refresh them."
+          action={<Button variant="secondary">Reconnect</Button>}
+        />
       </section>
     </div>
   );

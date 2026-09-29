@@ -44,7 +44,7 @@ TAG="$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)"
 IMAGE="$REGION-docker.pkg.dev/$PROJECT/$REPO/api:$TAG"
 
 echo "Building $IMAGE ..."
-gcloud builds submit --region "$REGION" --config api/cloudbuild.yaml --substitutions "_IMAGE=$IMAGE" .
+gcloud builds submit --config api/cloudbuild.yaml --substitutions "_IMAGE=$IMAGE" .
 
 echo "Deploying $SERVICE ..."
 # --update-env-vars keeps secrets added later; ^@^ lets WEB_ORIGIN contain commas.
