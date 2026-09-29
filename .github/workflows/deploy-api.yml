@@ -1,0 +1,104 @@
+# Deploys the API to Google Cloud Run (Mumbai) whenever API or engine code lands on main.
+#
+# One-time setup: run `bash scripts/setup-github-deploy.sh` in Google Cloud Shell, then add the two
+# values it prints as repository variables (GitHub → Settings → Secrets and variables → Actions →
+# Variables): GCP_WIF_PROVIDER and GCP_DEPLOY_SA. No keys or passwords are stored in GitHub;
+# GitHub proves who it is to Google with a short-lived token (Workload Identity Federation).
+#
+# The web app deploys itself through Vercel and the database through the Supabase GitHub
+# integration, so this workflow only handles the API.
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "api/**"
+      - "engine/**"
+      - ".github/workflows/deploy-api.yml"
+  workflow_dispatch: {}   # "Run workflow" button, for a manual redeploy
+
+# Never run two deploys at once; a newer push waits for the one in progress.
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+env:
+  PROJECT: fund-xray
+  REGION: asia-south1
+  SERVICE: fund-xray-api
+  REPO: fund-xray
+  WEB_ORIGIN: https://fund-xray-theta.vercel.app,http://localhost:3000
+  SUPABASE_URL: https://dgjbladcfysjncciukhg.supabase.co
+
+jobs:
+  test:
+    name: Test engine and API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - run: pip install -r api/requirements.txt
+      - run: pytest -q engine/tests
+      - run: pytest -q
+        working-directory: api
+
+  deploy:
+    name: Build and deploy to Cloud Run
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # lets GitHub hand Google a short-lived identity token
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sign in to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push the image
+        id: image
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT/$REPO/api:${GITHUB_SHA::7}"
+          gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+          docker build -f api/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloud Run
+        # Same settings as scripts/deploy-api.sh. --update-env-vars leaves secrets added in the
+        # Cloud Run console (Kite secret, encryption key) untouched; ^@^ allows commas in WEB_ORIGIN.
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --project "$PROJECT" \
+            --region "$REGION" \
+            --image "${{ steps.image.outputs.image }}" \
+            --allow-unauthenticated \
+            --min-instances 0 --max-instances 2 \
+            --cpu 1 --memory 512Mi --concurrency 40 --timeout 60 \
+            --update-env-vars "^@^WEB_ORIGIN=$WEB_ORIGIN@SUPABASE_URL=$SUPABASE_URL" \
+            --quiet
+
+      - name: Check the new version answers
+        run: |
+          URL="$(gcloud run services describe "$SERVICE" --project "$PROJECT" --region "$REGION" --format 'value(status.url)')"
+          for i in 1 2 3 4 5; do
+            if curl -fsS "$URL/health"; then echo; break; fi
+            [ "$i" = 5 ] && { echo "::error::$URL/health did not answer"; exit 1; }
+            sleep 5
+          done
+          # /me must exist and refuse a missing sign-in (401), proving the new code is live
+          code="$(curl -s -o /dev/null -w '%{http_code}' "$URL/me")"
+          echo "/me without a sign-in → $code"
+          [ "$code" = 401 ] || { echo "::error::expected 401 from /me, got $code"; exit 1; }
+          echo "### API deployed" >> "$GITHUB_STEP_SUMMARY"
+          echo "$URL (image \`${{ steps.image.outputs.image }}\`)" >> "$GITHUB_STEP_SUMMARY"
