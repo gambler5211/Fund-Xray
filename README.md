@@ -62,6 +62,30 @@ One-time setup:
 Check: sign in, change the index target in Settings, reload and see it kept; Settings → Account shows
 "The API recognises you"; a second Google account sees only its own settings.
 
+## Day 4: Connect Kite
+
+How it works: the web app sends you to Zerodha's own login page; Zerodha sends you back to the web
+app's `/kite/callback` with a one-time request token; the web app hands it to the API, which swaps
+it for an access token using the API secret, encrypts it (Fernet, key only on Cloud Run) and saves
+it through Supabase *as you*, so row-level security still applies and the API needs no Supabase
+secret key. The token stops working at 6 AM IST; the masthead then shows **Reconnect**.
+
+A random `state` value in a short-lived cookie must come back from Zerodha unchanged, so a login
+link started by someone else can't attach their Zerodha account to yours.
+
+One-time setup:
+
+1. **Kite app Redirect URL** (developers.kite.trade → your app): `https://fund-xray-theta.vercel.app/kite/callback`
+   (the web app, not the API).
+2. **Cloud Run** variables: `KITE_API_KEY`; secrets `KITE_API_SECRET` and `TOKEN_ENCRYPTION_KEY`
+   (44-character Fernet key) from Secret Manager, readable by the Cloud Run service account.
+3. **GitHub repository variable** `SUPABASE_PUBLISHABLE_KEY` (the same public key Vercel has); the
+   deploy workflow passes it to Cloud Run.
+4. The migration `20260930010000_day4_kite_token_functions.sql` applies itself on merge to `main`.
+
+API: `GET /kite/login-url`, `POST /kite/session`, `GET /kite/status`, `GET /kite/profile`,
+`DELETE /kite/session`. All need a signed-in user.
+
 ## Run it locally
 
 Web (Node 20 or newer):

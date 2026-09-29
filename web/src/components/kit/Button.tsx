@@ -25,15 +25,27 @@ export function LinkButton({
   variant = "primary",
   href,
   className = "",
+  native = false,
   children,
 }: {
   variant?: Variant;
   href: string;
   className?: string;
+  /** true for links that start a server redirect (e.g. /kite/connect): a plain <a>, so the browser
+   * navigates for real instead of Next fetching the route in the background first */
+  native?: boolean;
   children: React.ReactNode;
 }) {
+  const cls = `${BASE} ${VARIANT[variant]} ${className}`;
+  if (native) {
+    return (
+      <a href={href} className={cls}>
+        {children}
+      </a>
+    );
+  }
   return (
-    <Link href={href} className={`${BASE} ${VARIANT[variant]} ${className}`}>
+    <Link href={href} className={cls}>
       {children}
     </Link>
   );

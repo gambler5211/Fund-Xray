@@ -5,7 +5,7 @@ private key and publishes the matching public keys at /auth/v1/.well-known/jwks.
 can check them without any secret and without calling Supabase on every request.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 
 import jwt
@@ -24,6 +24,9 @@ _bearer = HTTPBearer(auto_error=False)
 class User:
     id: str
     email: str | None
+    # The raw sign-in token, passed on to Supabase so its row-level security applies to calls
+    # the API makes for this user. Kept out of repr so it never lands in a log line.
+    token: str = field(default="", repr=False)
 
 
 @lru_cache(maxsize=1)
@@ -61,7 +64,7 @@ def verify_token(token: str) -> User:
         raise _reject("Sign-in expired") from None
     except (jwt.PyJWTError, jwt.PyJWKClientError):
         raise _reject("Invalid sign-in token") from None
-    return User(id=claims["sub"], email=claims.get("email"))
+    return User(id=claims["sub"], email=claims.get("email"), token=token)
 
 
 def current_user(creds: HTTPAuthorizationCredentials | None = Depends(_bearer)) -> User:

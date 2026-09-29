@@ -30,6 +30,8 @@ env:
   REPO: fund-xray
   WEB_ORIGIN: https://fund-xray-theta.vercel.app,http://localhost:3000
   SUPABASE_URL: https://dgjbladcfysjncciukhg.supabase.co
+  # Public key (sb_publishable_...), added as a repository variable; lets the API act as the user
+  SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
 
 jobs:
   test:
@@ -55,6 +57,10 @@ jobs:
       contents: read
       id-token: write   # lets GitHub hand Google a short-lived identity token
     steps:
+      - name: Check settings
+        run: |
+          [ -n "$SUPABASE_PUBLISHABLE_KEY" ] || { echo "::error::Add the repository variable SUPABASE_PUBLISHABLE_KEY (Supabase → Project settings → API Keys)"; exit 1; }
+
       - uses: actions/checkout@v4
 
       - name: Sign in to Google Cloud
@@ -85,7 +91,7 @@ jobs:
             --allow-unauthenticated \
             --min-instances 0 --max-instances 2 \
             --cpu 1 --memory 512Mi --concurrency 40 --timeout 60 \
-            --update-env-vars "^@^WEB_ORIGIN=$WEB_ORIGIN@SUPABASE_URL=$SUPABASE_URL" \
+            --update-env-vars "^@^WEB_ORIGIN=$WEB_ORIGIN@SUPABASE_URL=$SUPABASE_URL@SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY" \
             --quiet
 
       - name: Check the new version answers

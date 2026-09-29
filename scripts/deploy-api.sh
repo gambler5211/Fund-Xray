@@ -17,6 +17,9 @@ SERVICE="fund-xray-api"
 REPO="fund-xray"
 WEB_ORIGIN="${WEB_ORIGIN:-https://fund-xray-theta.vercel.app,http://localhost:3000}"
 SUPABASE_URL="${SUPABASE_URL:-https://dgjbladcfysjncciukhg.supabase.co}"
+# Optional: SUPABASE_PUBLISHABLE_KEY=sb_publishable_... bash scripts/deploy-api.sh (left alone if unset)
+EXTRA_ENV=""
+[[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] && EXTRA_ENV="@SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY"
 
 gcloud config set project "$PROJECT" >/dev/null
 
@@ -58,7 +61,7 @@ gcloud run deploy "$SERVICE" \
   --allow-unauthenticated \
   --min-instances 0 --max-instances 2 \
   --cpu 1 --memory 512Mi --concurrency 40 --timeout 60 \
-  --update-env-vars "^@^WEB_ORIGIN=$WEB_ORIGIN@SUPABASE_URL=$SUPABASE_URL"
+  --update-env-vars "^@^WEB_ORIGIN=$WEB_ORIGIN@SUPABASE_URL=$SUPABASE_URL$EXTRA_ENV"
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')"
 echo

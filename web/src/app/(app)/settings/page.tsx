@@ -2,6 +2,7 @@ import { Kicker } from "@/components/Section";
 import { ErrorState } from "@/components/kit/States";
 import { DEFAULT_SETTINGS, SETTINGS_COLUMNS, fromRow } from "@/lib/settings";
 import { currentUser, supabaseServer } from "@/lib/supabase/server";
+import { kiteStatus } from "@/lib/kite";
 import { AccountCard } from "./AccountCard";
 import { SettingsForm } from "./SettingsForm";
 
@@ -16,7 +17,7 @@ export default async function SettingsPage() {
   const supabase = await supabaseServer();
   const [settings, kite] = await Promise.all([
     supabase.from("settings").select(SETTINGS_COLUMNS).eq("user_id", user.id).maybeSingle(),
-    supabase.from("kite_tokens").select("expires_at").eq("user_id", user.id).maybeSingle(),
+    kiteStatus(user.id),
   ]);
 
   return (
@@ -36,7 +37,7 @@ export default async function SettingsPage() {
       )}
 
       <div className="md:max-w-[calc(50%-16px)]">
-        <AccountCard name={user.name} email={user.email} kite={kite.data ?? null} />
+        <AccountCard name={user.name} email={user.email} kite={kite} />
       </div>
     </div>
   );
