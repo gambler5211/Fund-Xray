@@ -125,6 +125,22 @@ One-time setup:
 The 25 tracked indices are in `tracked_indices` (migration `20260930030000`), keyed by NSE's
 index name.
 
+## Day 7: Nightly market data
+
+`.github/workflows/nightly.yml` runs `jobs/nightly.py` at **7:10 PM IST, Monday to Friday**. It
+adds the day's closes for the 25 tracked indices from NSE's daily file. It looks back 10 days, so a
+late file or a missed night is filled in by the next run. Each run (and each `sectors` and
+`backfill` run) writes one row to `job_runs`; the app footer reads it:
+
+> Holdings from Kite, 30 Sept, 3:42 PM · Market data to 30 Sept close
+
+The market part turns ochre when the last run is more than 4 days old, and red when it failed.
+A failed scheduled run also emails you (GitHub's default). To run it by hand:
+Actions → Nightly → Run workflow.
+
+Holdings are **not** refreshed at night: Kite's token ends at 6 AM daily and a new one needs your
+Zerodha login, so holdings update when you press Refresh.
+
 ## Run it locally
 
 Web (Node 20 or newer):
@@ -153,6 +169,14 @@ pytest -q engine/tests
 cd api && pytest -q
 ```
 
+Data jobs (write to the real database, so they need the Supabase secret key):
+
+```bash
+pip install -r jobs/requirements.txt
+cd jobs
+SUPABASE_SECRET_KEY=sb_secret_... python nightly.py        # or import_sectors.py, backfill_index_prices.py --days 10
+```
+
 ## Day 1 is done when
 
 - [ ] The app opens on a Vercel preview in the paper look
@@ -172,7 +196,42 @@ cd api && pytest -q
 
 ## Secrets
 
-Real values live only in `web/.env.local` and `api/.env` (both git-ignored) and in Vercel / your API host.
+Nothing secret is in git. Real values live here:
+
+| Value | Where it lives | Used by |
+| --- | --- | --- |
+| Supabase URL, publishable key | `web/.env.local`, Vercel env vars, GitHub variable `SUPABASE_PUBLISHABLE_KEY`, Cloud Run env | Web app and API (safe to expose; row-level security guards the data) |
+| Supabase secret key (`sb_secret_...`) | GitHub secret `SUPABASE_SECRET_KEY` only | The NSE data jobs, which write shared reference data |
+| Kite API key | Cloud Run env `KITE_API_KEY`, `api/.env` | API |
+| Kite API secret | Secret Manager `KITE_API_SECRET`, `api/.env` | API |
+| Token encryption key | Secret Manager `TOKEN_ENCRYPTION_KEY`, `api/.env` | API: encrypts each user's Kite token before it is stored |
+| Google deploy access | No key: Workload Identity Federation (`GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA` variables) | Deploy API workflow |
+
+`web/.env.local` and `api/.env` are git-ignored.
+
+### Rotate the token encryption key
+
+Kite tokens last only until 6 AM, so rotating costs nothing more than one reconnect. Tokens
+encrypted with the old key simply fail to decrypt, and the app asks for a reconnect.
+
+In Cloud Shell:
+
+```bash
+python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" \
+  | tr -d '\n' | gcloud secrets versions add TOKEN_ENCRYPTION_KEY --data-file=- --project fund-xray
+gcloud run services update fund-xray-api --region asia-south1 --project fund-xray \
+  --update-secrets TOKEN_ENCRYPTION_KEY=TOKEN_ENCRYPTION_KEY:latest
+gcloud secrets versions list TOKEN_ENCRYPTION_KEY --project fund-xray   # then disable the old version:
+gcloud secrets versions disable <old-version> --secret TOKEN_ENCRYPTION_KEY --project fund-xray
+```
+
+The key must be 44 characters (`tr -d '\n'` stops a trailing newline sneaking in). Reconnect
+Zerodha afterwards. Rotate it if it may have leaked; there's no need to on a schedule.
+
+### Rotate the Supabase secret key
+
+Supabase → Project settings → API Keys → create a new secret key, update the GitHub secret
+`SUPABASE_SECRET_KEY`, run Actions → Nightly once to check, then delete the old key in Supabase.
 
 ## Deploy the API (Google Cloud Run, Mumbai)
 

@@ -64,7 +64,7 @@ export default function WelcomePage() {
       </div>
 
       {/* Masthead */}
-      <header className="flex flex-col items-center gap-2.5 border-t-[3px] border-b border-ink py-3">
+      <header className="flex flex-col items-center gap-3 border-t-[3px] border-b border-ink py-3">
         <div className="text-[32px] font-semibold leading-none tracking-[-0.02em] md:text-h1">Fund X-Ray</div>
         <nav aria-label="Sections" className="hidden items-center gap-7 font-sans text-ui font-medium md:flex">
           <a href="#how" className="no-underline">How it works</a>
@@ -127,7 +127,7 @@ export default function WelcomePage() {
             {CHECKS.map(([title, body], i) => (
               <div
                 key={title}
-                className={`flex flex-col gap-1.5 py-3.5 ${i < CHECKS.length - 1 ? "border-b border-rule" : ""} ${
+                className={`flex flex-col gap-1.5 py-3 ${i < CHECKS.length - 1 ? "border-b border-rule" : ""} ${
                   i >= 3 ? "md:border-b-0" : ""
                 }`}
               >
@@ -149,7 +149,7 @@ export default function WelcomePage() {
         </div>
       </main>
 
-      <footer className="flex flex-col gap-2 border-t border-ink pt-2.5 font-sans text-caption text-ink-3 md:flex-row md:justify-between">
+      <footer className="flex flex-col gap-2 border-t border-ink pt-3 font-sans text-caption text-ink-3 md:flex-row md:justify-between">
         <span>Data and analytics only. Not investment advice. Not affiliated with Zerodha or NSE.</span>
         <span>
           <a href="#privacy">Privacy</a> · <a href="#">Terms</a> · <a href="#">Contact</a>
@@ -175,8 +175,8 @@ function PromiseBox({ title, items }: { title: string; items: string[] }) {
 /** A framed "front page" showing what an edition looks like. Sample data, clearly labelled. */
 function SampleEdition() {
   return (
-    <figure className="flex w-full shrink-0 flex-col gap-2.5 md:w-[520px]">
-      <div className="flex flex-col gap-3.5 border border-ink bg-paper p-4 shadow-[6px_6px_0_var(--rule)] md:px-6 md:py-5 md:shadow-[8px_8px_0_var(--rule)]">
+    <figure className="flex w-full shrink-0 flex-col gap-3 md:w-[520px]">
+      <div className="flex flex-col gap-3 border border-ink bg-paper p-4 shadow-[6px_6px_0_var(--rule)] md:px-6 md:py-5 md:shadow-[8px_8px_0_var(--rule)]">
         <div className="flex justify-between border-b-2 border-ink pb-2 font-sans text-[11px] text-ink-3">
           <span className="font-semibold tracking-[0.12em]">SAMPLE EDITION</span>
           <span>Saturday</span>
@@ -189,12 +189,12 @@ function SampleEdition() {
           <Bar label="You" parts={[[43.6, "bg-q-leading"], [17.5, "bg-q-improving"], [38.9, "bg-q-weakening"]]} />
           <Bar label="Nifty 500" muted parts={[[41, "bg-q-leading"], [35, "bg-q-improving"], [15, "bg-q-weakening"], [9, "bg-q-lagging"]]} />
         </div>
-        <div className="flex flex-col gap-2 border-t border-rule pt-2.5 text-body">
-          <div className="flex gap-2.5">
+        <div className="flex flex-col gap-2 border-t border-rule pt-3 text-body">
+          <div className="flex gap-3">
             <span className="w-24 shrink-0 pt-[3px] font-sans text-[11px] font-semibold tracking-[0.1em] text-q-lagging">SURVEILLANCE</span>
             <span>One holding entered NSE&apos;s ASM list</span>
           </div>
-          <div className="flex gap-2.5">
+          <div className="flex gap-3">
             <span className="w-24 shrink-0 pt-[3px] font-sans text-[11px] font-semibold tracking-[0.1em] text-q-improving">CONCENTRATION</span>
             <span>Ten stocks, about three bets</span>
           </div>
@@ -209,7 +209,7 @@ function SampleEdition() {
 
 function Bar({ label, parts, muted = false }: { label: string; parts: [number, string][]; muted?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5">
+    <div className="flex items-center gap-3">
       <span className={`w-[62px] shrink-0 font-sans text-caption ${muted ? "text-ink-3" : "font-semibold"}`}>{label}</span>
       <div className={`flex h-[18px] flex-1 gap-0.5 ${muted ? "opacity-55" : ""}`} aria-hidden>
         {parts.map(([w, cls], i) => (

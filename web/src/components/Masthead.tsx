@@ -22,7 +22,7 @@ export function Masthead({ user, kite }: { user?: { name: string | null; email: 
       </div>
 
       {/* Wordmark between a thick and a thin rule */}
-      <div className="flex flex-col items-center gap-2.5 border-t-[3px] border-b border-ink py-3">
+      <div className="flex flex-col items-center gap-3 border-t-[3px] border-b border-ink py-3">
         <Link
           href="/"
           className="text-[32px] font-semibold leading-none tracking-[-0.02em] no-underline md:text-h1"

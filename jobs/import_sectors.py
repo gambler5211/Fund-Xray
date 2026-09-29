@@ -14,10 +14,11 @@ Anything still missing shows as "Unmapped" in the app, where you pick a sector.
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 
 from fund_xray_engine.nse import ARCHIVE, QUOTE_REFERER, QUOTE_URL, looks_like_fund, parse_constituents, parse_quote_industry
 
-from common import db_select, db_upsert, fetch_text, nse_client, summary
+from common import db_select, db_upsert, fetch_text, log_run, nse_client, summary
 
 LISTS = [  # later lists never overwrite an ISIN an earlier list already classified
     ("niftytotalmarket", "Nifty Total Market"),
@@ -25,6 +26,7 @@ LISTS = [  # later lists never overwrite an ISIN an earlier list already classif
     ("niftysmeemerge", "Nifty SME Emerge"),
 ]
 
+STARTED = datetime.now(timezone.utc).isoformat()
 seen: dict[str, dict] = {}
 with nse_client() as c:
     for slug, label in LISTS:
@@ -107,3 +109,5 @@ if missing:
     summary(f"- Still unmapped (pick these in the app): {', '.join(sorted(missing))}")
 if reasons:
     summary(f"- Quote lookups that failed, by reason: {reasons}")
+log_run("sectors", STARTED, "ok", f"{len(batch)} companies from the index lists; {len(found)} more from quote pages; {len(missing)} unmapped",
+        {"unmapped": sorted(missing)})

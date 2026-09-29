@@ -1,0 +1,35 @@
+# Nightly: add the day's closing values for the tracked indices, and log the run to job_runs.
+#
+# Runs at 7:10 PM IST, Monday to Friday. NSE publishes the day's index file in the early evening;
+# the job looks back 10 days, so a late file or a failed night is filled in by the next run.
+# A failed scheduled run emails the repository owner (GitHub's default).
+# Run it by hand from Actions → "Nightly" → Run workflow.
+name: Nightly
+
+on:
+  schedule:
+    - cron: "40 13 * * 1-5"   # 13:40 UTC = 19:10 IST
+  workflow_dispatch:
+
+concurrency:
+  group: nse-data              # never overlaps a backfill or sectors run
+  cancel-in-progress: false
+
+env:
+  SUPABASE_URL: https://dgjbladcfysjncciukhg.supabase.co
+
+jobs:
+  nightly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r jobs/requirements.txt
+      - name: Add the day's index closes
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python nightly.py

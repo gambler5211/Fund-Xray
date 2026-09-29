@@ -49,7 +49,7 @@ export function KiteCard({ status }: { status: KiteStatus }) {
       {!expired ? (
         <ol className="flex flex-1 flex-col md:border-l md:border-rule md:pl-10">
           {STEPS.map(([title, body], i) => (
-            <li key={title} className="flex gap-4 border-b border-rule py-3.5 first:pt-0 last:border-0">
+            <li key={title} className="flex gap-4 border-b border-rule py-3 first:pt-0 last:border-0">
               <span className="w-5 shrink-0 text-[24px] leading-none font-medium text-accent">{i + 1}</span>
               <div className="flex flex-col gap-1">
                 <span className="font-sans text-ui font-semibold text-ink">{title}</span>
