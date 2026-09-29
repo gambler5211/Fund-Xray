@@ -5,9 +5,9 @@ Data and analytics only, not investment advice.
 
 ```
 web/      Next.js app: (public)/welcome = signed-out home, (app)/* = signed-in pages; (paper design, day and night themes)
-api/      FastAPI service: health now; Google-token checks, Kite login and holdings on later days
+api/      FastAPI service: /health, Supabase token checks (/me); Kite login and holdings on later days
 engine/   Plain Python package with all the calculations; no UI code
-supabase/ Database migrations (Day 3)
+supabase/ Database migrations (run in the Supabase SQL Editor)
 ```
 
 ## Day 1 status
@@ -38,6 +38,29 @@ supabase/ Database migrations (Day 3)
    ```
 4. **Vercel.** Import the repo, set **Root Directory** to `web`, add the environment variable
    `NEXT_PUBLIC_API_URL` (use `http://localhost:8000` until the API is deployed on Day 7).
+
+## Day 3: Google sign-in and the database
+
+What's built: Google sign-in (`/login`), signed-out visitors redirected to `/login`, sign-out from the
+account menu, the Settings page, the API checking the Supabase token on every private route (`/me`
+first), and the first database migration with row-level security.
+
+One-time setup:
+
+1. **Run the migration.** Supabase → SQL Editor → paste `supabase/migrations/20260930000000_day3_users_settings.sql`
+   → Run. It creates `users`, `settings`, `kite_tokens`, `holdings_snapshot`, a trigger that makes your
+   settings row on first sign-in, and `delete_my_account()`. Safe to run twice.
+2. **Redirect URLs.** Supabase → Authentication → URL Configuration. Site URL
+   `https://fund-xray-theta.vercel.app`; Redirect URLs `https://fund-xray-theta.vercel.app/**`,
+   `http://localhost:3000/**`, and `https://*-<your-vercel-team>.vercel.app/**` for preview builds.
+3. **Web keys.** Add `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Supabase →
+   Project settings → API Keys → publishable key) to `web/.env.local` and to Vercel (Production and
+   Preview), then redeploy.
+4. **API.** Redeploy with `bash scripts/deploy-api.sh`; it now sets `SUPABASE_URL` on Cloud Run. The API
+   needs no secret to check tokens: it uses Supabase's public signing keys.
+
+Check: sign in, change the index target in Settings, reload and see it kept; Settings → Account shows
+"The API recognises you"; a second Google account sees only its own settings.
 
 ## Run it locally
 

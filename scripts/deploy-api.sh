@@ -5,15 +5,18 @@
 #   bash scripts/deploy-api.sh setup     # first time only: turns on services and permissions
 #   bash scripts/deploy-api.sh           # every deploy after that
 #
-# Set WEB_ORIGIN to the web app's address(es), comma-separated, e.g.
-#   WEB_ORIGIN="https://fund-xray.vercel.app,http://localhost:3000" bash scripts/deploy-api.sh
+# WEB_ORIGIN is the web app's address(es), comma-separated; it defaults to production + localhost.
+# SUPABASE_URL lets the API check sign-in tokens against Supabase's public keys.
+# Secrets (Supabase secret key, Kite secret, encryption key) are added once in the Cloud Run
+# console under Edit → Variables & Secrets; --update-env-vars below leaves them alone.
 set -euo pipefail
 
 PROJECT="${PROJECT:-fund-xray}"
 REGION="asia-south1"          # Mumbai
 SERVICE="fund-xray-api"
 REPO="fund-xray"
-WEB_ORIGIN="${WEB_ORIGIN:-http://localhost:3000}"
+WEB_ORIGIN="${WEB_ORIGIN:-https://fund-xray-theta.vercel.app,http://localhost:3000}"
+SUPABASE_URL="${SUPABASE_URL:-https://dgjbladcfysjncciukhg.supabase.co}"
 
 gcloud config set project "$PROJECT" >/dev/null
 
@@ -55,7 +58,7 @@ gcloud run deploy "$SERVICE" \
   --allow-unauthenticated \
   --min-instances 0 --max-instances 2 \
   --cpu 1 --memory 512Mi --concurrency 40 --timeout 60 \
-  --update-env-vars "^@^WEB_ORIGIN=$WEB_ORIGIN"
+  --update-env-vars "^@^WEB_ORIGIN=$WEB_ORIGIN@SUPABASE_URL=$SUPABASE_URL"
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')"
 echo

@@ -1,3 +1,6 @@
+import { SettingsForm } from "../settings/SettingsForm";
+import { AccountCard } from "../settings/AccountCard";
+import { DEFAULT_SETTINGS } from "@/lib/settings";
 import { Kicker, EmptyState, SectionHeader } from "@/components/Section";
 import { AllocationBar, QuadrantLegend } from "@/components/kit/AllocationBar";
 import { Button, LinkButton } from "@/components/kit/Button";
@@ -217,6 +220,14 @@ export default function TokensPage() {
           body="Your saved holdings are still here, last updated yesterday. Reconnect to refresh them."
           action={<Button variant="secondary">Reconnect</Button>}
         />
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <SectionHeader title="Settings form" aside={<SampleLabel>Demo, saves nowhere</SampleLabel>} />
+        <SettingsForm demo initial={DEFAULT_SETTINGS} />
+        <div className="md:max-w-[calc(50%-16px)]">
+          <AccountCard demo name="Sample Reader" email="reader@example.com" kite={null} />
+        </div>
       </section>
     </div>
   );

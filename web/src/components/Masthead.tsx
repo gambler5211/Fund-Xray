@@ -5,7 +5,7 @@ import { RefreshButton } from "./RefreshButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { TopNav } from "./TopNav";
 
-export function Masthead() {
+export function Masthead({ user }: { user?: { name: string | null; email: string } | null }) {
   return (
     <header className="pt-4 md:pt-7">
       {/* Date line */}
@@ -18,7 +18,7 @@ export function Masthead() {
           </span>
           <RefreshButton />
           <ThemeToggle />
-          <AccountMenu />
+          <AccountMenu name={user?.name} email={user?.email} />
         </div>
       </div>
 
