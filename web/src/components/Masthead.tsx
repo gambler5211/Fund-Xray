@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { AccountMenu } from "./AccountMenu";
 import { EditionDate } from "./EditionDate";
+import { RefreshButton } from "./RefreshButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { TopNav } from "./TopNav";
 
@@ -9,12 +11,14 @@ export function Masthead() {
       {/* Date line */}
       <div className="flex items-center justify-between gap-4 pb-3 font-sans text-caption text-ink-3 md:text-[13px]">
         <EditionDate />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
           <span className="flex items-center gap-2">
             <span aria-hidden className="h-2 w-2 rounded-full bg-ink-3" />
             Kite not connected
           </span>
+          <RefreshButton />
           <ThemeToggle />
+          <AccountMenu />
         </div>
       </div>
 
