@@ -8,7 +8,7 @@ from __future__ import annotations
 import sys
 from datetime import date, timedelta
 
-from fund_xray_engine.nse import ARCHIVE, close_all_url, parse_close_all, parse_constituents
+from fund_xray_engine.nse import ARCHIVE, bhavcopy_url, close_all_url, parse_bhavcopy, parse_close_all, parse_constituents
 
 from common import fetch_text, nse_client, summary
 
@@ -54,6 +54,37 @@ with nse_client() as c:
         ok = ok and bool(rows)
     except RuntimeError as e:
         summary(f"- ❌ Constituent list failing: {e}")
+        ok = False
+
+    # 4. Daily stock prices (bhavcopy), latest and 3 years back
+    for label, start in (("latest", date.today()), ("3 years ago", date.today() - timedelta(days=3 * 365))):
+        d, step = start, (-1 if label == "latest" else 1)
+        for _ in range(10):
+            try:
+                text = fetch_text(c, bhavcopy_url(d))
+            except RuntimeError as e:
+                summary(f"- ❌ Stock price file ({label}) failing: {e}")
+                ok = False
+                break
+            if text:
+                rows = parse_bhavcopy(text)
+                summary(f"- {'✅' if rows else '❌'} Stock price file for {d:%d %b %Y}: {len(rows)} stocks")
+                ok = ok and bool(rows)
+                break
+            d += timedelta(days=step)
+        else:
+            summary(f"- ❌ No stock price file found ({label})")
+            ok = False
+
+    # 5. A constituent list that only niftyindices.com publishes
+    try:
+        c.headers["Referer"] = "https://www.niftyindices.com/"
+        text = fetch_text(c, "https://www.niftyindices.com/IndexConstituent/ind_niftyPower_list.csv")
+        rows = parse_constituents(text or "")
+        summary(f"- {'✅' if rows else '❌'} niftyindices.com constituent list (Nifty Power): {len(rows)} companies")
+        ok = ok and bool(rows)
+    except RuntimeError as e:
+        summary(f"- ❌ niftyindices.com failing: {e}")
         ok = False
 
 summary("NSE is reachable from here." if ok else "NSE refused at least one request from here; see above.")

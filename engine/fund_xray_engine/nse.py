@@ -4,6 +4,10 @@
   one file per trading day with ~130 indices (open, high, low, close, P/E, P/B, dividend yield).
 - Index constituents: nsearchives.nseindia.com/content/indices/ind_<index>_list.csv
   company, NSE industry (sector level: "Capital Goods", "Power", ...), symbol, series, ISIN.
+  (Newer indices are only on niftyindices.com/IndexConstituent/, same format.)
+- Daily stock prices: nsearchives.nseindia.com/products/content/sec_bhavdata_full_DDMMYYYY.csv
+  one file per trading day, every listed stock and series; symbol, not ISIN. PREV_CLOSE is
+  adjusted for splits and bonuses on the ex-date, which is how the engine spots them.
 """
 
 from __future__ import annotations
@@ -27,6 +31,16 @@ INDUSTRIES = (
 
 def close_all_url(d: date) -> str:
     return f"{ARCHIVE}/ind_close_all_{d:%d%m%Y}.csv"
+
+
+BHAVCOPY = "https://nsearchives.nseindia.com/products/content"
+
+# Series that are normal trading in a stock. EQ is the main board; BE/BZ trade-to-trade; SM/ST SME.
+EQUITY_SERIES = ("EQ", "BE", "BZ", "SM", "ST")
+
+
+def bhavcopy_url(d: date) -> str:
+    return f"{BHAVCOPY}/sec_bhavdata_full_{d:%d%m%Y}.csv"
 
 
 def weekdays(start: date, end: date) -> Iterator[date]:
@@ -87,6 +101,30 @@ def parse_constituents(text: str) -> list[dict]:
         if isin and symbol and industry:
             out.append({"isin": isin, "symbol": symbol, "company_name": r.get("Company Name") or symbol, "industry": industry})
     return out
+
+
+def parse_bhavcopy(text: str, symbols: set[str] | None = None) -> list[dict]:
+    """One sec_bhavdata_full file → [{symbol, series, date, prev_close, close, volume}].
+
+    Keeps equity series only, one row per symbol (EQ preferred when a stock has two), and only
+    `symbols` if given. Rows without a close are dropped."""
+    best: dict[str, dict] = {}
+    rank = {s: i for i, s in enumerate(EQUITY_SERIES)}
+    for r in csv.DictReader(io.StringIO(text.lstrip("\ufeff"))):
+        r = {(k or "").strip(): (v or "").strip() for k, v in r.items()}
+        symbol, series = r.get("SYMBOL", ""), r.get("SERIES", "")
+        if not symbol or series not in rank or (symbols is not None and symbol not in symbols):
+            continue
+        close = _num(r.get("CLOSE_PRICE"))
+        raw_date = r.get("DATE1", "")
+        if close is None or not raw_date:
+            continue
+        vol = _num(r.get("TTL_TRD_QNTY"))
+        row = {"symbol": symbol, "series": series, "date": datetime.strptime(raw_date, "%d-%b-%Y").date().isoformat(),
+               "prev_close": _num(r.get("PREV_CLOSE")), "close": close, "volume": int(vol) if vol is not None else None}
+        if symbol not in best or rank[series] < rank[best[symbol]["series"]]:
+            best[symbol] = row
+    return list(best.values())
 
 
 def sector_split(holdings: list[dict], sectors: dict[str, str | None]) -> list[dict]:
