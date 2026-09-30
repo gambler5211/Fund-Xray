@@ -84,8 +84,8 @@ def compute(full: bool = False) -> dict:
             s = al.split(placed, now[1])
             still = al.split(placed, prev[1]) if prev else None
             align_rows.append({"user_id": user, "week_start": ws.isoformat(), "benchmark_key": bench, "date": now[0].isoformat(),
-                               "leading": round(s.leading, 4), "improving": round(s.improving, 4),
-                               "weakening": round(s.weakening, 4), "lagging": round(s.lagging, 4),
+                               "q_leading": round(s.leading, 4), "q_improving": round(s.improving, 4),
+                               "q_weakening": round(s.weakening, 4), "q_lagging": round(s.lagging, 4),
                                "unmapped": round(s.unmapped, 4), "gaining": round(s.gaining, 4), "losing": round(s.losing, 4),
                                "gaining_if_still": round(still.gaining, 4) if still else None})
     db_upsert("holdings_weekly", weekly_rows, on_conflict="user_id,week_start")
@@ -102,8 +102,8 @@ def compute(full: bool = False) -> dict:
         if m:
             n, s = m
             market_rows.append({"week_start": ws.isoformat(), "benchmark_key": bench, "date": d.isoformat(), "stocks": n,
-                                "leading": round(s.leading, 4), "improving": round(s.improving, 4),
-                                "weakening": round(s.weakening, 4), "lagging": round(s.lagging, 4),
+                                "q_leading": round(s.leading, 4), "q_improving": round(s.improving, 4),
+                                "q_weakening": round(s.weakening, 4), "q_lagging": round(s.lagging, 4),
                                 "gaining": round(s.gaining, 4), "losing": round(s.losing, 4)})
     for i in range(0, len(market_rows), 1000):
         db_upsert("market_alignment", market_rows[i:i + 1000], on_conflict="week_start,benchmark_key")
