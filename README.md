@@ -141,6 +141,39 @@ Actions → Nightly → Run workflow.
 Holdings are **not** refreshed at night: Kite's token ends at 6 AM daily and a new one needs your
 Zerodha login, so holdings update when you press Refresh.
 
+## Week 2: Rotation
+
+`engine/fund_xray_engine/rotation.py` scores each sector and thematic index against a benchmark:
+RS = index ÷ benchmark, Ratio = 100 × RS ÷ its 50-day average, Momentum = 100 × Ratio ÷ Ratio
+10 days earlier, then one of four quadrants (Leading, Weakening, Lagging, Improving). Only days on
+which both have a close count; nothing is filled in. One point per week (the week's last trading
+day), with an 8-week tail. It's an open approximation, so the app calls them "rotation quadrants",
+not RRG.
+
+To see this week's table from the real data: Actions → NSE data → Run workflow → `rotation`, pick a
+benchmark. The table appears in the run summary. Locally: `python jobs/rotation_table.py --benchmark nifty-500`.
+
+Scores are stored in `rotation_scores` (every tracked index × 4 benchmarks × every trading day,
+`week_end` marking the points the chart plots). The nightly job updates them after adding prices;
+`jobs/compute_rotation.py --full` rewrites all of them. `sector_index_map` links each NSE sector
+to its closest index (`fit` = direct or proxy); sectors with no fitting index are left out.
+
+After adding indices to `tracked_indices`, run Actions → NSE data → `refill`: it downloads 3 years
+again for every index (the normal backfill judges "already saved" by the Nifty 50 row, so it would
+skip them) and recomputes all rotation scores. About 15 minutes.
+
+Breadth needs the stocks inside each index. `index_constituents` holds each tracked index's
+members (from the list at `tracked_indices.constituents_url`; five newer indices are only
+published on niftyindices.com), refreshed by the weekly `sectors` run. `stock_prices` holds daily
+closes for those stocks only (about 750), from NSE's bhavcopy
+(`sec_bhavdata_full_DDMMYYYY.csv`), keyed by symbol because that file has no ISIN. Closes are as
+traded; NSE's `prev_close` is adjusted on split and bonus ex-dates, which is how the engine spots
+them. First fill: Actions → NSE data → `sectors`, then `stocks` (about 30 minutes; if it hits the
+time limit, run it again and it carries on). The nightly job then adds each day.
+
+A sector gaining or losing at a steady pace settles on the Momentum = 100 line; it only moves up
+or down when its pace against the benchmark changes. That's how the maths works, not a bug.
+
 ## Run it locally
 
 Web (Node 20 or newer):

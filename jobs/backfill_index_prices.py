@@ -20,13 +20,16 @@ from common import db_select, db_upsert, fetch_text, log_run, nse_client, summar
 ANCHOR = "nifty-50"  # every daily file has it, so its dates are the days we have
 
 
-def backfill(start: date, end: date, pause: float = 0.7, progress: bool = True) -> dict:
-    """Download and save every weekday in [start, end] not saved yet. Returns counts for the summary."""
+def backfill(start: date, end: date, pause: float = 0.7, progress: bool = True, refill: bool = False) -> dict:
+    """Download and save every weekday in [start, end] not saved yet. Returns counts for the summary.
+
+    refill=True downloads every day again, even ones already saved: use it after adding indices to
+    tracked_indices, since "saved" is judged by the Nifty 50 row and the new indices have none."""
     tracked = db_select("tracked_indices", {"select": "key,nse_name"})
     by_name = {norm(t["nse_name"]): t["key"] for t in tracked}
     have = {r["date"] for r in db_select("index_prices", {"select": "date", "index_key": f"eq.{ANCHOR}",
                                                           "date": f"gte.{start.isoformat()}", "limit": "5000"})}
-    days = [d for d in weekdays(start, end) if d.isoformat() not in have]
+    days = [d for d in weekdays(start, end) if refill or d.isoformat() not in have]
     summary(f"Index prices {start} → {end}: {len(days)} weekdays to fetch ({len(have)} already saved), {len(tracked)} indices tracked.")
 
     saved: list[str] = []
@@ -62,13 +65,14 @@ if __name__ == "__main__":
     ap.add_argument("--years", type=float, default=0)
     ap.add_argument("--days", type=int, default=0)
     ap.add_argument("--pause", type=float, default=0.7, help="seconds between downloads, to be polite")
+    ap.add_argument("--refill", action="store_true", help="download days already saved too (after adding indices)")
     args = ap.parse_args()
 
     started = datetime.now(timezone.utc).isoformat()
     end = date.today()
     start = end - timedelta(days=int(args.years * 365.25) if args.years else (args.days or 10))
     try:
-        res = backfill(start, end, args.pause)
+        res = backfill(start, end, args.pause, refill=args.refill)
     except Exception as e:
         log_run("backfill", started, "failed", f"Backfill failed: {e}")
         raise

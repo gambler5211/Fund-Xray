@@ -65,3 +65,25 @@ def test_quote_industry_and_funds():
     assert looks_like_fund("SILVERBEES", "Nippon India Silver ETF")
     assert looks_like_fund("METAL", "Mirae Asset Nifty Metal ETF")
     assert not looks_like_fund("DREDGECORP", "Dredging Corp Of India")
+
+
+BHAV = """SYMBOL, SERIES, DATE1, PREV_CLOSE, OPEN_PRICE, HIGH_PRICE, LOW_PRICE, LAST_PRICE, CLOSE_PRICE, AVG_PRICE, TTL_TRD_QNTY, TURNOVER_LACS, NO_OF_TRADES, DELIV_QTY, DELIV_PER
+20MICRONS, EQ, 29-Sep-2026, 212.94, 212.16, 216.45, 209.02, 211.20, 212.80, 212.99, 54062, 115.14, 2439, 24068, 44.52
+RELIANCE, EQ, 29-Sep-2026, 1400.00, 1401, 1410, 1395, 1405, 1404.50, 1403, 1234567, 17000, 90000, 600000, 48.6
+RELIANCE, BL, 29-Sep-2026, 1400.00, 1401, 1410, 1395, 1405, 1406.00, 1403, 100, 1, 1, -, -
+TWOSER, BE, 29-Sep-2026, 50, 50, 51, 49, 50, 50.50, 50, 10, 0.1, 2, -, -
+TWOSER, EQ, 29-Sep-2026, 50, 50, 51, 49, 50, 50.40, 50, 99, 0.5, 3, -, -
+GOLDBEES, EQ, 29-Sep-2026, 80, 80, 81, 79, 80, -, 80, 10, 0.1, 2, -, -
+"""
+
+
+def test_parse_bhavcopy_keeps_equity_series_one_row_each():
+    from fund_xray_engine.nse import bhavcopy_url, parse_bhavcopy
+    rows = {r["symbol"]: r for r in parse_bhavcopy(BHAV)}
+    assert set(rows) == {"20MICRONS", "RELIANCE", "TWOSER"}  # GOLDBEES has no close
+    assert rows["RELIANCE"] == {"symbol": "RELIANCE", "series": "EQ", "date": "2026-09-29",
+                                "prev_close": 1400.0, "close": 1404.5, "volume": 1234567}  # block deal (BL) ignored
+    assert rows["TWOSER"]["series"] == "EQ" and rows["TWOSER"]["close"] == 50.4  # EQ preferred over BE
+    assert [r["symbol"] for r in parse_bhavcopy(BHAV, {"RELIANCE"})] == ["RELIANCE"]
+    from datetime import date
+    assert bhavcopy_url(date(2026, 9, 29)).endswith("/sec_bhavdata_full_29092026.csv")

@@ -72,6 +72,28 @@ def db_select(table: str, params: dict) -> list[dict]:
     return r.json()
 
 
+def db_delete(table: str, params: dict) -> None:
+    """Delete the rows matching PostgREST filters, e.g. {"index_key": "eq.nifty-it"}."""
+    if not params:
+        raise ValueError("refusing to delete without a filter")
+    r = httpx.delete(f"{SUPABASE_URL}/rest/v1/{table}", params=params, headers={**_db_headers(), "Prefer": "return=minimal"}, timeout=60)
+    if r.status_code >= 300:
+        raise RuntimeError(f"delete {table}: HTTP {r.status_code} {r.text[:300]}")
+
+
+def db_select_all(table: str, params: dict, page: int = 1000) -> list[dict]:
+    """Every matching row, fetched in pages (PostgREST returns at most 1,000 rows per request).
+    `params` must include an "order" so pages don't overlap."""
+    out: list[dict] = []
+    offset = 0
+    while True:
+        rows = db_select(table, {**params, "limit": str(page), "offset": str(offset)})
+        out += rows
+        if len(rows) < page:
+            return out
+        offset += page
+
+
 def log_run(job: str, started_at: str, status: str, summary_line: str, details: dict | None = None) -> None:
     """One row in job_runs, which the app's footer reads to show how fresh the data is."""
     try:

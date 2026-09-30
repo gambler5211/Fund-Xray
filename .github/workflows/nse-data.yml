@@ -2,8 +2,12 @@
 #
 # Run from Actions → "NSE data" → Run workflow, choosing the job:
 #   probe     can GitHub's servers download NSE's files? Writes nothing. Run this first.
-#   sectors   refresh industry_map from NSE's index constituent lists
+#   sectors   refresh industry_map and index_constituents from NSE's index lists (also weekly)
 #   backfill  fill 3 years of index_prices (≈15 minutes; resumable, safe to re-run)
+#   stocks    fill 3 years of stock_prices for index constituents (≈30 minutes; resumable, re-run if it times out)
+#   rotation  print this week's rotation quadrants from index_prices (reads only)
+#   refill    after adding indices to tracked_indices: download 3 years again for all of them,
+#             then recompute every rotation score (≈15 minutes)
 #
 # Needs the repository secret SUPABASE_SECRET_KEY (Supabase → Project settings → API Keys →
 # Secret keys). It stays in GitHub; Cloud Run and the web app never see it.
@@ -15,11 +19,16 @@ on:
       job:
         description: Which job to run
         type: choice
-        options: [probe, sectors, backfill]
+        options: [probe, sectors, backfill, stocks, rotation, refill]
         default: probe
       years:
         description: Years of history for backfill
         default: "3"
+      benchmark:
+        description: Benchmark for rotation
+        type: choice
+        options: [nifty-500, nifty-50, nifty-midcap-150, nifty-smallcap-250]
+        default: nifty-500
   schedule:
     - cron: "30 2 * * 0"   # Sundays 08:00 IST: refresh sectors (NSE updates constituents twice a year, plus new listings)
 
@@ -51,7 +60,17 @@ jobs:
         working-directory: jobs
         env:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-        run: python import_sectors.py
+        run: |
+          python import_sectors.py
+          python import_constituents.py
+
+      - name: Backfill stock prices
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'stocks'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          YEARS: ${{ inputs.years }}
+        run: python backfill_stock_prices.py --years "$YEARS"
 
       - name: Backfill index prices
         if: github.event_name == 'workflow_dispatch' && inputs.job == 'backfill'
@@ -60,3 +79,21 @@ jobs:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
           YEARS: ${{ inputs.years }}
         run: python backfill_index_prices.py --years "$YEARS"
+
+      - name: Rotation table
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'rotation'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          BENCHMARK: ${{ inputs.benchmark }}
+        run: python rotation_table.py --benchmark "$BENCHMARK"
+
+      - name: Refill index prices and rotation scores
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'refill'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          YEARS: ${{ inputs.years }}
+        run: |
+          python backfill_index_prices.py --years "$YEARS" --refill
+          python compute_rotation.py --full
