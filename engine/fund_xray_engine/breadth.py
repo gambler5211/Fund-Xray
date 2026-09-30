@@ -22,7 +22,9 @@ The regime compares the cyclical and defensive groups' Ratios against the Nifty 
     Defensive lead  that difference < -REGIME_THRESHOLD
     Neutral         otherwise
 
-Starting values from the plan; Day 7 backtests and tunes them. Pure functions, no network.
+Starting values from the plan. Day 7 backtested them (docs/regime-backtest.md): no threshold from
+±1 to ±4 or breadth cut-off from 40 to 60% predicted the next 4 or 8 weeks better than chance, so
+they stay as they are and the label is shown as a description of now, not a forecast. Pure functions, no network.
 """
 
 from __future__ import annotations

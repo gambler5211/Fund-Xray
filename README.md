@@ -204,6 +204,11 @@ place the rule lives, so the backtest and the nightly job can't drift apart. Abo
 overlapping 4 and 8 week outcomes is a small sample: the table shows which settings are clearly
 worse, not a precise winner.
 
+Result (30 Sep 2026, in `docs/regime-backtest.md`): no setting beat the base rate. The current
+rule (±2, breadth 50%) was right 49% of the time over 4 weeks against a 53% base rate, and every
+setting did worse in the later half of history than the earlier. The thresholds are unchanged and
+the page describes the label as "which group is ahead now", not a forecast.
+
 ## Run it locally
 
 Web (Node 20 or newer):

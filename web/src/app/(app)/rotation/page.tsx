@@ -206,6 +206,11 @@ function RegimeLine({ r }: { r: RegimeInfo }) {
         This week: cyclical − defensive = {signedPts(r.spread)} ({r.cyclical.toFixed(2)} vs {r.defensive.toFixed(2)})
         {r.marketBreadth !== null ? `; market breadth ${Math.round(r.marketBreadth)}%` : ""}.
       </p>
+      <p className="max-w-[80ch] font-sans text-caption leading-relaxed text-ink-3">
+        What it is and isn&apos;t: this says which group is ahead now. Tested on 145 weeks, it did not tell you which group would do
+        better over the next 4 to 8 weeks (right 49% of the time, when simply betting on cyclicals was right 53%). No threshold did
+        better, so these are the starting values.
+      </p>
     </div>
   );
 }
