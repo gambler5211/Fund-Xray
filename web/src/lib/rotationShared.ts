@@ -26,7 +26,28 @@ export const CLOCKWISE: Quadrant[] = ["leading", "weakening", "lagging", "improv
 
 export type Point = { date: string; ratio: number; momentum: number; quadrant: Quadrant };
 
-export type HeldInfo = { share: number; sectors: string[]; proxy: boolean };
+export type HeldInfo = { share: number; sectors: string[]; proxy: boolean; holdings: { symbol: string; name: string; share: number }[] };
+
+/** This week's breadth for one index (from index_breadth). Returns are over 20 trading days, in %. */
+export type BreadthInfo = { members: number; pctAbove: number; pctUp: number; ewReturn: number; indexReturn: number | null; spread: number | null; narrow: boolean };
+
+export type RegimeLabel = "Cyclical lead" | "Defensive lead" | "Neutral";
+export type RegimeInfo = {
+  date: string;
+  regime: RegimeLabel;
+  cyclical: number;
+  defensive: number;
+  spread: number;
+  marketBreadth: number | null;
+  threshold: number;
+  breadthMin: number;
+  weeks: number; // weeks in a row with this regime, up to 12
+  prev: RegimeLabel | null;
+};
+
+/** The groups the regime compares (engine: breadth.CYCLICAL / DEFENSIVE). */
+export const CYCLICAL_NAMES = "Bank, Auto, Metal, Realty, Infrastructure and PSE";
+export const DEFENSIVE_NAMES = "FMCG, Pharma and Healthcare";
 
 export type IndexRow = {
   key: string;
@@ -37,7 +58,15 @@ export type IndexRow = {
   fourWeeksAgo: Point | null;
   nearLine: boolean;
   held: HeldInfo | null;
+  breadth: BreadthInfo | null;
 };
+
+/** "7.4 points behind its average stock": the narrow flag in words. */
+export function narrowText(b: BreadthInfo) {
+  if (b.spread === null) return "";
+  const pts = Math.abs(b.spread).toFixed(1);
+  return b.spread > 0 ? `index ${pts} pts ahead of its average stock` : `index ${pts} pts behind its average stock`;
+}
 
 export const nearLine = (ratio: number, momentum: number) => Math.abs(ratio - 100) < NEUTRAL_BAND || Math.abs(momentum - 100) < NEUTRAL_BAND;
 

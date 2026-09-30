@@ -139,6 +139,17 @@ def breadth(members: Mapping[str, Mapping[date, float]], index: Mapping[date, fl
     return out
 
 
+def classify(spread: float, market_breadth: float | None,
+             threshold: float = REGIME_THRESHOLD, breadth_min: float = REGIME_BREADTH) -> str:
+    """The regime label for one week from the group spread and market breadth. One place for the
+    rule, so the nightly job and the backtest can't drift apart."""
+    if spread > threshold and market_breadth is not None and market_breadth > breadth_min:
+        return CYCLICAL_LEAD
+    if spread < -threshold:
+        return DEFENSIVE_LEAD
+    return NEUTRAL
+
+
 def regime(ratios: Mapping[str, float], market_breadth: float | None, on: date,
            threshold: float = REGIME_THRESHOLD, breadth_min: float = REGIME_BREADTH,
            cyclical: Sequence[str] = CYCLICAL, defensive: Sequence[str] = DEFENSIVE) -> Regime | None:
@@ -150,13 +161,7 @@ def regime(ratios: Mapping[str, float], market_breadth: float | None, on: date,
         return None
     c, f = sum(cyc) / len(cyc), sum(dfn) / len(dfn)
     spread = c - f
-    if spread > threshold and market_breadth is not None and market_breadth > breadth_min:
-        label = CYCLICAL_LEAD
-    elif spread < -threshold:
-        label = DEFENSIVE_LEAD
-    else:
-        label = NEUTRAL
-    return Regime(on, c, f, spread, market_breadth, label)
+    return Regime(on, c, f, spread, market_breadth, classify(spread, market_breadth, threshold, breadth_min))
 
 
 def week_ends(calendar: Sequence[date]) -> list[date]:

@@ -8,6 +8,8 @@
 #   rotation  print this week's rotation quadrants from index_prices (reads only)
 #   breadth   recompute every rotation score (with the steady labels), then breadth and the
 #             market regime for every week in 3 years (≈5 minutes). Run once after Day 4 merges
+#   backtest  score the regime rule's thresholds against the 3 years of saved weeks (reads only;
+#             the table appears in the run summary). Needs `breadth` to have run first
 #   refill    after adding indices to tracked_indices: download 3 years again for all of them,
 #             then recompute every rotation score (≈15 minutes)
 #
@@ -21,7 +23,7 @@ on:
       job:
         description: Which job to run
         type: choice
-        options: [probe, sectors, backfill, stocks, rotation, breadth, refill]
+        options: [probe, sectors, backfill, stocks, rotation, breadth, backtest, refill]
         default: probe
       years:
         description: Years of history for backfill
@@ -109,3 +111,10 @@ jobs:
         run: |
           python compute_rotation.py --full
           python compute_breadth.py --full
+
+      - name: Backtest the regime rule
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'backtest'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python backtest_regime.py

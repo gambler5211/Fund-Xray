@@ -194,6 +194,16 @@ thresholds are starting values; Week 2 Day 7 backtests them. First fill after me
 NSE data → `breadth` (recomputes rotation with the steady labels, then breadth and regime; about
 5 minutes). The nightly job keeps all three current.
 
+**Backtest (Day 7).** `engine/fund_xray_engine/backtest.py` replays the regime rule over the saved
+weeks: for each threshold (±1 to ±4) and breadth cut-off (off, 40 to 60%) it scores the label
+against what the cyclical group did against the defensive group over the next 4 and 8 weeks (hit
+rate, hit rate in each half of history, average gap, how often the label flips). Run Actions → NSE
+data → `backtest` (reads only; the table lands in the run summary), or
+`python jobs/backtest_regime.py --out docs/regime-backtest.md`. `breadth.classify` is the single
+place the rule lives, so the backtest and the nightly job can't drift apart. About 145 weeks with
+overlapping 4 and 8 week outcomes is a small sample: the table shows which settings are clearly
+worse, not a precise winner.
+
 ## Run it locally
 
 Web (Node 20 or newer):
