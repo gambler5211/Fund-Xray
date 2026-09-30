@@ -47,8 +47,8 @@ export const toQuadrant = (s: string | null | undefined): Quadrant | null =>
 const QNAME: Record<Quadrant, string> = { leading: "Leading", weakening: "Weakening", lagging: "Lagging", improving: "Improving" };
 
 /** "Metal", "Metal and Pharma", "Metal, Pharma and 2 more". */
-export function nameList(names: string[], max = 2) {
-  if (names.length <= max) return names.length === 2 ? `${names[0]} and ${names[1]}` : names.join("");
+export function nameList(names: string[], max = 3) {
+  if (names.length <= max) return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : names.join("");
   const shown = names.slice(0, max);
   const more = names.length - max;
   return `${shown.join(", ")} and ${more} more`;
@@ -101,11 +101,77 @@ export function moneyByQuadrant(rows: IndexRow[]) {
 
 /** The sentence under the lead. */
 export function rotationDek(rows: IndexRow[], benchmark: string, unmappedShare: number | null): string {
-  const intro = `Each dot is a sector index measured against the ${benchmark}: right of the centre line it's ahead, above it it's gaining pace.`;
+  const intro = `Where each NSE sector index stands against the ${benchmark}, and which way it's heading.`;
   if (unmappedShare === null) return intro;
   const m = moneyByQuadrant(rows);
   const parts = CLOCKWISE.filter((q) => m[q] >= 0.05).map((q) => `${pctText(m[q])} in ${QNAME[q]}`);
   if (!parts.length) return `${intro} None of your holdings sit in a tracked sector.`;
   const rest = unmappedShare >= 0.05 ? ` The other ${pctText(unmappedShare)} is in sectors without an index, funds, or unmapped.` : "";
   return `${intro} Of your money, ${parts.join(", ")}.${rest}`;
+}
+
+// --- Plain-words descriptions -------------------------------------------------------------
+
+/** Weeks in a row the sector has carried its current label, within the 8-week tail. */
+export function weeksInQuadrant(r: IndexRow) {
+  let n = 0;
+  for (let i = r.tail.length - 1; i >= 0 && r.tail[i].quadrant === r.now.quadrant; i--) n++;
+  return { weeks: n, capped: n >= r.tail.length };
+}
+
+type Side = "ahead" | "level" | "behind";
+type Pace = "gaining" | "steady" | "losing";
+const side = (ratio: number): Side => (ratio >= 100 + NEUTRAL_BAND ? "ahead" : ratio <= 100 - NEUTRAL_BAND ? "behind" : "level");
+const pace = (momentum: number): Pace => (momentum >= 100 + NEUTRAL_BAND ? "gaining" : momentum <= 100 - NEUTRAL_BAND ? "losing" : "steady");
+
+/** "ahead of the Nifty 50 and pulling further ahead" — where it stands and which way it's going. */
+export function standing(r: IndexRow, benchmark: string) {
+  const b = `the ${benchmark}`;
+  const phrase: Record<Side, Record<Pace, string>> = {
+    ahead: { gaining: `ahead of ${b} and pulling further ahead`, steady: `ahead of ${b}, with the lead holding steady`, losing: `still ahead of ${b}, but the lead is shrinking` },
+    level: { gaining: `level with ${b}, starting to pull ahead`, steady: `moving in step with ${b}`, losing: `level with ${b}, starting to slip behind` },
+    behind: { gaining: `behind ${b}, but catching up`, steady: `behind ${b}, with the gap holding steady`, losing: `behind ${b} and falling further back` },
+  };
+  return phrase[side(r.now.ratio)][pace(r.now.momentum)];
+}
+
+/** "for 3 weeks", "new this week", "for 8 weeks or more". */
+export function since(r: IndexRow) {
+  const { weeks, capped } = weeksInQuadrant(r);
+  if (weeks <= 1 && r.prev) return "new this week";
+  if (capped) return `for ${weeks} weeks or more`;
+  return `for ${weeks} weeks`;
+}
+
+/** "New this week", "6 weeks", "8+ weeks": how long it has carried its label, for a small tag. */
+export function sinceShort(r: IndexRow) {
+  const { weeks, capped } = weeksInQuadrant(r);
+  if (weeks <= 1 && r.prev) return "new this week";
+  return capped ? `${weeks}+ weeks` : `${weeks} weeks`;
+}
+
+/** Points of Ratio gained or lost over 4 weeks, or null without that much history. */
+export const change4w = (r: IndexRow) => (r.fourWeeksAgo ? r.now.ratio - r.fourWeeksAgo.ratio : null);
+
+export type Move = { row: IndexRow; text: string };
+
+/**
+ * Up to `max` notable moves among sectors you don't hold: quadrant changes this week first
+ * (biggest weekly Ratio change first), then the largest 4-week swings in Ratio.
+ */
+export function biggestMoves(rows: IndexRow[], benchmark: string, max = 3): Move[] {
+  const others = rows.filter((r) => !r.held);
+  const weekly = (r: IndexRow) => (r.prev ? Math.abs(r.now.ratio - r.prev.ratio) : 0);
+  const moved = others
+    .filter((r) => r.prev && r.prev.quadrant !== r.now.quadrant && !r.nearLine)
+    .sort((a, b) => weekly(b) - weekly(a))
+    .map((r) => ({ row: r, text: `moved into ${QNAME[r.now.quadrant]}: ${standing(r, benchmark)}` }));
+  const swings = others
+    .filter((r) => !moved.some((m) => m.row === r) && change4w(r) !== null && Math.abs(change4w(r)!) >= 2)
+    .sort((a, b) => Math.abs(change4w(b)!) - Math.abs(change4w(a)!))
+    .map((r) => {
+      const c = change4w(r)!;
+      return { row: r, text: `${c > 0 ? "gained" : "lost"} ${Math.abs(c).toFixed(1)} points against the ${benchmark} in 4 weeks; now ${standing(r, benchmark)}` };
+    });
+  return [...moved, ...swings].slice(0, max);
 }
