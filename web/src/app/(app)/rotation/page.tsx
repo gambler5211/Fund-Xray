@@ -8,11 +8,13 @@ import {
   BENCHMARK_KEYS,
   BENCHMARK_LABELS,
   CLOCKWISE,
-  NEUTRAL_BAND,
+  biggestMoves,
   isBenchmarkKey,
   loadRotation,
   rotationDek,
   rotationHeadline,
+  sinceShort,
+  standing,
   type BenchmarkKey,
   type IndexRow,
 } from "@/lib/rotation";
@@ -71,7 +73,8 @@ export default async function RotationPage({ searchParams }: { searchParams: Pro
   }
 
   const { rows, asOf } = data;
-  const onLine = rows.filter((r) => r.nearLine).length;
+  const mine_ = rows.filter((r) => r.held).sort((a, b) => b.held!.share - a.held!.share);
+  const moves = biggestMoves(rows, name);
 
   return (
     <div className="flex flex-col">
@@ -79,17 +82,63 @@ export default async function RotationPage({ searchParams }: { searchParams: Pro
         <Kicker>Sector rotation · week to {weekOf(asOf)}</Kicker>
         <h1 className="max-w-[28ch] text-[30px] font-medium leading-[1.1] tracking-[-0.015em] md:text-[46px]">{rotationHeadline(rows)}</h1>
         <p className="max-w-[64ch] text-body leading-relaxed text-ink-2 md:text-lead">{rotationDek(rows, name, data.unmappedShare)}</p>
+        {switcher}
       </section>
 
+      <div className="grid gap-x-12 border-b border-ink md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <section className="flex flex-col gap-3 py-7">
+          <SectionHeader title="Your sectors this week" aside={mine_.length ? `Against the ${name}` : undefined} />
+          {mine_.length ? (
+            <ul className="flex flex-col">
+              {mine_.map((r) => (
+                <li key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-4 gap-y-1 border-b border-rule py-3">
+                  <span className="font-semibold">
+                    {r.label} <span className="figures font-normal text-ink-3">· {shareText(r.held!.share)} of your money</span>
+                  </span>
+                  <span className="flex items-baseline gap-1.5">
+                    <QuadrantChip quadrant={r.now.quadrant} />
+                    <span className="font-sans text-caption text-ink-3">· {sinceShort(r)}</span>
+                  </span>
+                  <span className="col-span-2 text-body leading-snug text-ink-2">
+                    {cap(standing(r, name))}.
+                    {r.held!.proxy ? <span className="text-ink-3"> ({r.held!.sectors.join(", ")} shown by its closest index.)</span> : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-body text-ink-2">
+              {data.hasHoldings ? "None of your holdings sit in a sector with an NSE index." : "Pull your holdings on the Portfolio page to see your sectors here."}
+            </p>
+          )}
+        </section>
+        <section className="flex flex-col gap-3 py-7">
+          <SectionHeader title="Biggest moves elsewhere" aside="Sectors you don't hold" />
+          {moves.length ? (
+            <ul className="flex flex-col">
+              {moves.map((m) => (
+                <li key={m.row.key} className="flex flex-col gap-1 border-b border-rule py-3">
+                  <span className="flex items-baseline justify-between gap-4">
+                    <span className="font-semibold">{m.row.label}</span>
+                    <QuadrantChip quadrant={m.row.now.quadrant} />
+                  </span>
+                  <span className="text-body leading-snug text-ink-2">{cap(m.text)}.</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-body text-ink-2">A quiet week: no other sector changed quadrant or moved more than 2 points in 4 weeks.</p>
+          )}
+        </section>
+      </div>
+
       <section className="flex flex-col gap-4 border-b border-ink py-7">
-        <SectionHeader title="Where each sector stands" aside={`${rows.length} indices`} />
-        {switcher}
+        <SectionHeader title="The map" aside={`${rows.length} indices`} />
         <RotationChart rows={rows} benchmark={name} />
         <p className="font-sans text-caption leading-relaxed text-ink-3">
-          Source: NSE index closes to {weekOf(asOf)}; one dot per week, tails show the last 8 weeks. Rotation quadrants, not RRG: Ratio compares each
-          index with the {name} against its own 50-day average, Momentum is the change in Ratio over 10 trading days.
-          {onLine ? ` Grey dots are within ${NEUTRAL_BAND} of a line, so their label can still change.` : ""}
-          {data.hasHoldings ? " Bold sectors are ones you hold, with their share of your money." : ""}
+          Source: NSE index closes to {weekOf(asOf)}, one dot per week. Rotation quadrants, not RRG: Ratio compares each index with the {name}{" "}
+          against its own 50-day average; Momentum is the change in Ratio over 10 trading days. A sector keeps its label until it crosses a line
+          by more than half a point.
         </p>
       </section>
 
@@ -100,6 +149,8 @@ export default async function RotationPage({ searchParams }: { searchParams: Pro
     </div>
   );
 }
+
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 function BenchmarkSwitch({ current, mine }: { current: BenchmarkKey; mine: BenchmarkKey }) {
   const keys = Object.keys(BENCHMARK_LABELS) as BenchmarkKey[];

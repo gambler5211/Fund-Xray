@@ -14,7 +14,7 @@ echarts.use([LineChart, BarChart, ScatterChart, GridComponent, LegendComponent, 
 
 /** Below this width the chart is drawn in its phone form. */
 export const COMPACT_WIDTH = 640;
-export type ChartContext = { width: number; compact: boolean };
+export type ChartContext = { width: number; height: number; compact: boolean };
 
 /**
  * An ECharts chart that follows the Day / Night theme.
@@ -27,13 +27,18 @@ export function Chart({
   height = 280,
   className,
   label,
+  onClick,
 }: {
   option: EChartsCoreOption | ((ctx: ChartContext) => EChartsCoreOption);
   height?: number;
   className?: string;
   label: string;
+  /** A click or tap: `data` is the clicked item (null for empty space inside the plot). */
+  onClick?: (data: unknown) => void;
 }) {
   const el = useRef<HTMLDivElement>(null);
+  const click = useRef(onClick);
+  click.current = onClick;
 
   useEffect(() => {
     const node = el.current;
@@ -46,7 +51,11 @@ export function Chart({
       echarts.registerTheme("fx", chartTheme());
       chart = echarts.init(node, "fx", { renderer: "svg" });
       compact = node.clientWidth < COMPACT_WIDTH;
-      chart.setOption(typeof option === "function" ? option({ width: node.clientWidth, compact }) : option);
+      chart.setOption(typeof option === "function" ? option({ width: node.clientWidth, height: node.clientHeight, compact }) : option);
+      chart.on("click", (p) => click.current?.((p as { data?: unknown }).data ?? null));
+      chart.getZr().on("click", (e) => {
+        if (!e.target) click.current?.(null); // tapped the background
+      });
     };
     draw();
 
@@ -54,7 +63,8 @@ export function Chart({
     const themeWatch = new MutationObserver(draw);
     themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     const sizeWatch = new ResizeObserver(() => {
-      if (typeof option === "function" && node.clientWidth < COMPACT_WIDTH !== compact) draw();
+      // An option built from the size (label placement, phone layout) is rebuilt; others just resize.
+      if (typeof option === "function") draw();
       else chart?.resize();
     });
     sizeWatch.observe(node);
