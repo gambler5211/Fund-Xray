@@ -24,7 +24,7 @@ export function KiteCard({ status }: { status: KiteStatus }) {
         <p className="text-lead leading-snug">
           Connected{status.kiteUserId ? <> as <span className="figures">{status.kiteUserId}</span></> : null}, until {until}.
         </p>
-        <p className="font-sans text-ui text-ink-3">Your holdings table and totals arrive with Day 5.</p>
+        <p className="font-sans text-ui text-ink-3">Your holdings are on the Portfolio page.</p>
       </section>
     );
   }
