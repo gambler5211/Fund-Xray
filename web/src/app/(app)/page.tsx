@@ -9,6 +9,7 @@ import { portfolioHeadline } from "@/lib/headline";
 import { latestSnapshot } from "@/lib/holdings";
 import { KITE_NOTICES, kiteStatus } from "@/lib/kite";
 import { BENCHMARK_LABELS, loadRotation, moneyByQuadrant, sinceShort, standing, userBenchmark } from "@/lib/rotation";
+import { alignmentChange, changeDetail, changePhrase, gainingIfStill, loadAlignmentContext } from "@/lib/alignment";
 import { currentUser } from "@/lib/supabase/server";
 
 const pctText = (n: number) => `${n >= 9.95 ? Math.round(n) : n.toFixed(1)}%`;
@@ -35,6 +36,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   let kicker = "Your alignment";
   let headline: string;
   let dek: string;
+  let marketLine: string | null = null;
   if (!snap) {
     headline = status.state === "connected" ? "Pull your holdings to see where your money sits" : "Connect Zerodha to see where your money sits";
     dek = "Fund X-Ray reads your holdings, maps each stock to its sector, and tells you how much of your money sits in sectors gaining or losing strength against the market.";
@@ -43,9 +45,14 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
     dek = rot.state === "ok" ? "None of your holdings sit in a sector with an NSE index yet." : "Sector scores didn't load just now; your holdings are below.";
   } else {
     kicker = `Your alignment · week to ${weekOf(rot.asOf)}`;
-    headline = `${pctText(gaining)} of your money is in sectors gaining on the ${name}; ${pctText(losing)} is in sectors losing ground`;
+    const ctx = await loadAlignmentContext(user.id, benchmark, rot.asOf);
+    const c = alignmentChange(gaining, ctx.lastWeekGaining, gainingIfStill(rows));
+    headline = `${pctText(gaining)} of your money is in sectors gaining on the ${name}${changePhrase(c)}`;
     const rest = rot.unmappedShare !== null && rot.unmappedShare >= 0.05 ? ` The other ${pctText(rot.unmappedShare)} is in sectors without an index.` : "";
-    dek = `${portfolioHeadline(snap)}. Leading ${pctText(m.leading)}, Improving ${pctText(m.improving)}, Weakening ${pctText(m.weakening)}, Lagging ${pctText(m.lagging)}.${rest}`;
+    const detail = changeDetail(c);
+    dek = `${portfolioHeadline(snap)}. Leading ${pctText(m.leading)}, Improving ${pctText(m.improving)}, Weakening ${pctText(m.weakening)}, Lagging ${pctText(m.lagging)}; ${pctText(losing)} is losing ground.${rest}${detail ? ` ${detail}` : ""}`;
+    if (ctx.market)
+      marketLine = `For comparison, ${pctText(ctx.market.gaining)} of the Nifty 500's stocks are in gaining sectors this week (${ctx.market.stocks} stocks counted, not weighted by size).`;
   }
 
   const t = snap?.totals;
@@ -58,6 +65,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         <Kicker>{kicker}</Kicker>
         <h1 className="max-w-[26ch] text-[30px] font-medium leading-[1.1] tracking-[-0.015em] md:text-[46px]">{headline}</h1>
         <p className="figures max-w-[64ch] text-body leading-relaxed text-ink-2 md:text-lead">{dek}</p>
+        {marketLine ? <p className="figures max-w-[64ch] font-sans text-ui text-ink-3">{marketLine}</p> : null}
       </section>
 
       {status.state !== "connected" ? (

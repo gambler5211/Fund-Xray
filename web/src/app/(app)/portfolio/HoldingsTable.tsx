@@ -6,6 +6,7 @@ import { DataTable } from "@/components/kit/DataTable";
 import { count, pct, price, rupees, signedPct, signedRupees } from "@/lib/format";
 import type { HoldingRowData } from "@/lib/holdings";
 import { instrumentKey, type SectorMap } from "@/lib/sectorsShared";
+import { SLOW_EXIT_DAYS, daysText, holdingFlags, type LiquidityMap } from "@/lib/liquidityShared";
 import { SectorPicker } from "./SectorPicker";
 
 const tone = (n: number) => (n > 0 ? "text-gain" : n < 0 ? "text-loss" : "text-ink-3");
@@ -23,7 +24,19 @@ function Both({ amount, change }: { amount: number; change: number }) {
   );
 }
 
-function columns(sectors: SectorMap): ColumnDef<HoldingRowData, unknown>[] {
+function Flags({ items }: { items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <span className="flex flex-col font-sans text-caption text-warn">
+      {items.map((f) => (
+        <span key={f}>⚑ {f}</span>
+      ))}
+    </span>
+  );
+}
+
+function columns(sectors: SectorMap, liquidity: LiquidityMap, stockLimit: number): ColumnDef<HoldingRowData, unknown>[] {
+  const days = (h: HoldingRowData) => liquidity[instrumentKey(h)]?.days ?? null;
   return [
   {
     id: "name",
@@ -36,6 +49,7 @@ function columns(sectors: SectorMap): ColumnDef<HoldingRowData, unknown>[] {
           {h.symbol}
           {h.notes.length ? ` · ${h.notes.join(" · ")}` : ""}
         </span>
+        <Flags items={holdingFlags(h.weight_pct, days(h), stockLimit)} />
       </span>
     ),
   },
@@ -52,6 +66,16 @@ function columns(sectors: SectorMap): ColumnDef<HoldingRowData, unknown>[] {
   { id: "day", header: "Today", accessorFn: (h) => h.day_change_pct, cell: ({ row: { original: h } }) => <Both amount={h.day_change} change={h.day_change_pct} />, meta: { align: "right" } },
   { id: "pnl", header: "P/L", accessorFn: (h) => h.pnl_pct, cell: ({ row: { original: h } }) => <Both amount={h.pnl} change={h.pnl_pct} />, meta: { align: "right" } },
   { id: "weight", header: "Weight", accessorFn: (h) => h.weight_pct, cell: (c) => pct(c.getValue() as number), meta: { align: "right" } },
+  {
+    id: "exit",
+    header: "Days to sell",
+    accessorFn: (h) => days(h) ?? Number.POSITIVE_INFINITY,
+    cell: ({ row: { original: h } }) => {
+      const d = days(h);
+      return <span className={d !== null && d > SLOW_EXIT_DAYS ? "text-warn" : d === null ? "text-ink-3" : ""}>{d === null ? "–" : d < 1 ? "<1" : Math.round(d)}</span>;
+    },
+    meta: { align: "right" },
+  },
   ];
 }
 
@@ -59,8 +83,18 @@ function columns(sectors: SectorMap): ColumnDef<HoldingRowData, unknown>[] {
  * Holdings set like a stock-listings page. Sort by any column, search by name or symbol, or put the
  * biggest losers (by total P/L %) first. On phones each holding becomes a stacked entry.
  */
-export function HoldingsTable({ holdings, sectors }: { holdings: HoldingRowData[]; sectors: SectorMap }) {
-  const cols = useMemo(() => columns(sectors), [sectors]);
+export function HoldingsTable({
+  holdings,
+  sectors,
+  liquidity,
+  stockLimit,
+}: {
+  holdings: HoldingRowData[];
+  sectors: SectorMap;
+  liquidity: LiquidityMap;
+  stockLimit: number;
+}) {
+  const cols = useMemo(() => columns(sectors, liquidity, stockLimit), [sectors, liquidity, stockLimit]);
   const [q, setQ] = useState("");
   const [losersFirst, setLosersFirst] = useState(false);
 
@@ -130,6 +164,10 @@ export function HoldingsTable({ holdings, sectors }: { holdings: HoldingRowData[
                 </span>
                 <span className={`figures text-right font-sans text-caption ${tone(h.pnl)}`}>
                   {signedRupees(h.pnl)} ({signedPct(h.pnl_pct)})
+                </span>
+                <span className="col-span-2 flex flex-col gap-0.5">
+                  <span className="figures font-sans text-caption text-ink-3">Days to sell: {daysText(liquidity[instrumentKey(h)]?.days ?? null)}</span>
+                  <Flags items={holdingFlags(h.weight_pct, liquidity[instrumentKey(h)]?.days ?? null, stockLimit)} />
                 </span>
               </li>
             ))}

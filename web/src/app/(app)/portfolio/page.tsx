@@ -7,11 +7,15 @@ import { portfolioDek, portfolioHeadline } from "@/lib/headline";
 import { latestSnapshot } from "@/lib/holdings";
 import { kiteStatus } from "@/lib/kite";
 import { REFRESH_ERRORS } from "@/lib/refresh";
-import { currentUser } from "@/lib/supabase/server";
+import { currentUser, supabaseServer } from "@/lib/supabase/server";
+import { loadConcentration } from "@/lib/concentration";
+import { liquidityFor } from "@/lib/liquidity";
+import { SETTINGS_COLUMNS, fromRow } from "@/lib/settings";
 import { sectorSplit, sectorsFor } from "@/lib/sectors";
 import { HoldingsTable } from "./HoldingsTable";
 import { WhereMoneySits } from "./WhereMoneySits";
 import { PullButton } from "./PullButton";
+import { SpreadOut } from "./SpreadOut";
 
 export const metadata = { title: "Portfolio · Fund X-Ray" };
 
@@ -44,7 +48,14 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const sectors = await sectorsFor(snap.holdings);
+  const supabase = await supabaseServer();
+  const [sectors, liquidity, concentration, settingsRow] = await Promise.all([
+    sectorsFor(snap.holdings),
+    liquidityFor(snap.holdings),
+    loadConcentration(user.id),
+    supabase.from("settings").select(SETTINGS_COLUMNS).eq("user_id", user.id).maybeSingle(),
+  ]);
+  const stockLimit = fromRow((settingsRow.data ?? {}) as Record<string, unknown>).alert_stock_weight_pct;
   const groups = sectorSplit(snap.holdings, sectors);
   const t = snap.totals;
   const asOf = istTime(snap.taken_at, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -78,12 +89,18 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
         <WhereMoneySits groups={groups} asOf={asOf} />
       </section>
 
+      <section className="flex flex-col gap-4 border-b border-ink py-7">
+        <SectionHeader title="How spread out you are" aside={concentration ? "Weekly prices, last 12 months" : undefined} />
+        <SpreadOut c={concentration} snapshotAt={snap.taken_at} />
+      </section>
+
       <section id="holdings" className="flex scroll-mt-4 flex-col gap-4 py-7">
         <SectionHeader title="Holdings" aside={`Worth ${rupees(t.value)}`} />
-        <HoldingsTable holdings={snap.holdings} sectors={sectors} />
+        <HoldingsTable holdings={snap.holdings} sectors={sectors} liquidity={liquidity} stockLimit={stockLimit} />
         <p className="font-sans text-caption text-ink-3">
           Source: Zerodha Kite, holdings as of {asOf} IST. Totals worked out by Fund X-Ray; quantities include T1 shares. Shares bought today appear
-          under Positions until tomorrow.
+          under Positions until tomorrow. Days to sell assumes you sell no more than 10% of the stock&apos;s average daily NSE volume over
+          the last 20 sessions, so your own selling doesn&apos;t move the price; flagged above 5 days.
         </p>
       </section>
 

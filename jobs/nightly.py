@@ -14,7 +14,9 @@ from datetime import date, datetime, timedelta, timezone
 
 from backfill_index_prices import ANCHOR, backfill
 from backfill_stock_prices import backfill_stocks
+from compute_alignment import compute as compute_alignment
 from compute_breadth import compute as compute_breadth
+from compute_concentration import compute as compute_concentration
 from compute_rotation import compute as compute_rotation
 from common import db_select, log_run, summary
 
@@ -35,6 +37,8 @@ def main() -> None:
         stocks = backfill_stocks(today - timedelta(days=LOOKBACK_DAYS), today, pause=0.7, progress=False)
         rotation = compute_rotation(full=False)
         breadth = compute_breadth(full=False)
+        alignment = compute_alignment(full=False)
+        concentration = compute_concentration()
     except Exception as e:
         log_run("nightly", started, "failed", f"Nightly run failed: {str(e)[:300]}")
         raise
@@ -58,7 +62,8 @@ def main() -> None:
     log_run("nightly", started, "ok", line, {"added": added, "no_file": res["no_file"], "latest_date": latest_date,
                                              "missing_indices": res["missing_indices"], "stock_days": len(stocks["saved"]),
                                              "rotation_latest": rotation["latest"].isoformat() if rotation.get("latest") else None,
-                                             "regime": breadth.get("regime")})
+                                             "regime": breadth.get("regime"), "alignment_rows": alignment["rows"],
+                                             "concentration_users": concentration["users"]})
 
 
 if __name__ == "__main__":
