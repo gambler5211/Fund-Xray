@@ -6,6 +6,7 @@
 -- market_alignment   one row per week and benchmark: the share of Nifty 500 stocks in each
 --                    quadrant (counts stocks, since NSE's lists carry no weights)
 --
+-- Quadrant columns are q_leading etc.: LEADING is a reserved word in Postgres.
 -- Written only by jobs/compute_alignment.py with the secret key. You read your own rows;
 -- market_alignment is readable by every signed-in user. Deleting your account removes yours.
 
@@ -23,10 +24,10 @@ create table if not exists public.alignment_weekly (
   week_start      date not null,
   benchmark_key   text not null references public.tracked_indices (key) on delete cascade,
   date            date not null,             -- the week's last trading day (the rotation point)
-  leading         numeric not null,          -- % of your money in each quadrant
-  improving       numeric not null,
-  weakening       numeric not null,
-  lagging         numeric not null,
+  q_leading         numeric not null,          -- % of your money in each quadrant
+  q_improving       numeric not null,
+  q_weakening       numeric not null,
+  q_lagging         numeric not null,
   unmapped        numeric not null,          -- % in sectors without an index, funds, or unmapped
   gaining         numeric not null,          -- leading + improving
   losing          numeric not null,          -- weakening + lagging
@@ -39,10 +40,10 @@ create table if not exists public.market_alignment (
   benchmark_key  text not null references public.tracked_indices (key) on delete cascade,
   date           date not null,
   stocks         int not null,               -- Nifty 500 stocks whose sector has an index
-  leading        numeric not null,           -- % of those stocks in each quadrant
-  improving      numeric not null,
-  weakening      numeric not null,
-  lagging        numeric not null,
+  q_leading        numeric not null,           -- % of those stocks in each quadrant
+  q_improving      numeric not null,
+  q_weakening      numeric not null,
+  q_lagging        numeric not null,
   gaining        numeric not null,
   losing         numeric not null,
   primary key (week_start, benchmark_key)
