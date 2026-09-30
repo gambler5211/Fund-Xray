@@ -209,6 +209,26 @@ rule (±2, breadth 50%) was right 49% of the time over 4 weeks against a 53% bas
 setting did worse in the later half of history than the earlier. The thresholds are unchanged and
 the page describes the label as "which group is ahead now", not a forecast.
 
+**Alignment (Week 3).** `engine/fund_xray_engine/alignment.py` puts each holding in its sector
+and the sector's index, then sums your money by that index's steady quadrant: **gaining**
+(Leading + Improving) and **losing ground** (Weakening + Lagging); funds, sectors without an index
+and unclassified stocks are "unmapped". `jobs/compute_alignment.py` stores, each week,
+`holdings_weekly` (the week's last snapshot, with sectors), `alignment_weekly` (your split against
+each benchmark, plus the split your holdings would have had with last week's quadrants) and
+`market_alignment` (the Nifty 500's stocks by their sector's quadrant, counted, not weighted). The
+Today headline compares this week with the stored last week and splits the change into "sectors
+moving" and "your trades and price moves". The nightly job keeps it current; after merging, run
+Actions → NSE data → `alignment` once to fill the past weeks you have snapshots for.
+
+**Concentration (Week 3).** `stock_prices` now also covers every NSE stock in anyone's recent
+holdings, not only index members; after buying something outside the indices, run Actions → NSE
+data → `holdings-prices` for its 3-year history. `engine/fund_xray_engine/concentration.py` gives
+**effective holdings** (1 ÷ sum of squared weights), **clusters** of holdings whose weekly returns
+over the last year correlate above 0.6 (average linkage, so look-alike chains can't pull unrelated
+stocks together), and **effective bets** (the same formula over clusters). Holdings with under 26
+weeks of prices are listed as left out and count as a bet of their own. `jobs/compute_concentration.py`
+writes one row per user to `portfolio_concentration` in the nightly run.
+
 ## Run it locally
 
 Web (Node 20 or newer):

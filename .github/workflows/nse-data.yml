@@ -10,6 +10,10 @@
 #             market regime for every week in 3 years (≈5 minutes). Run once after Day 4 merges
 #   backtest  score the regime rule's thresholds against the 3 years of saved weeks (reads only;
 #             the table appears in the run summary). Needs `breadth` to have run first
+#   alignment rewrite every week of your alignment and the market's from the saved holdings
+#             snapshots and rotation scores (≈1 minute). Run once after Week 3 Day 1 merges
+#   holdings-prices  3 years of prices for stocks you hold that aren't in any tracked index
+#             (only stocks with no saved history; ≈20 minutes), then recompute concentration
 #   refill    after adding indices to tracked_indices: download 3 years again for all of them,
 #             then recompute every rotation score (≈15 minutes)
 #
@@ -23,7 +27,7 @@ on:
       job:
         description: Which job to run
         type: choice
-        options: [probe, sectors, backfill, stocks, rotation, breadth, backtest, refill]
+        options: [probe, sectors, backfill, stocks, rotation, breadth, backtest, alignment, holdings-prices, refill]
         default: probe
       years:
         description: Years of history for backfill
@@ -118,3 +122,19 @@ jobs:
         env:
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: python backtest_regime.py
+
+      - name: Alignment for every week
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'alignment'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: python compute_alignment.py --full
+
+      - name: Prices for held stocks outside the indices
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'holdings-prices'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          python backfill_stock_prices.py --years 3 --new-only
+          python compute_concentration.py
