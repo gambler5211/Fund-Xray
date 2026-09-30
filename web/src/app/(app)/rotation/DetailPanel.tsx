@@ -9,6 +9,7 @@ import { readToken } from "@/lib/chartTheme";
 import { QUADRANTS, type Quadrant } from "@/lib/quadrant";
 import { narrowText, since, standing, toQuadrant, type BenchmarkKey, type IndexRow } from "@/lib/rotationShared";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { rsiWords } from "@/lib/indicatorsShared";
 
 const DAY = 24 * 60 * 60 * 1000;
 const RETURN_DAYS = 20; // same window as the engine's breadth (about 4 weeks)
@@ -20,14 +21,16 @@ type Detail = {
   rs: { date: string; value: number }[]; // relative strength, 100 = a year ago
   weeks: { date: string; quadrant: Quadrant }[];
   members: { symbol: string; name: string; ret: number | null }[];
+  rsi: number | null; // the index's RSI(14)
 };
 
 async function loadDetail(key: string, bench: BenchmarkKey, asOf: string): Promise<Detail> {
   const sb = supabaseBrowser();
   const yearAgo = new Date(new Date(asOf).getTime() - 366 * DAY).toISOString().slice(0, 10);
-  const [scores, members] = await Promise.all([
+  const [scores, members, rsiRow] = await Promise.all([
     sb.from("rotation_scores").select("date, rs, quadrant, settled_quadrant, week_end").eq("index_key", key).eq("benchmark_key", bench).gte("date", yearAgo).order("date").limit(1000),
     sb.from("index_constituents").select("symbol, company_name").eq("index_key", key).limit(1000),
+    sb.from("latest_indicators").select("rsi14").eq("kind", "index").eq("key", key).maybeSingle(),
   ]);
   if (scores.error) throw scores.error;
   if (members.error) throw members.error;
@@ -69,6 +72,7 @@ async function loadDetail(key: string, bench: BenchmarkKey, asOf: string): Promi
     rs: s.map((r) => ({ date: r.date, value: (100 * Number(r.rs)) / base })),
     weeks: s.filter((r) => r.week_end).map((r) => ({ date: r.date, quadrant: (toQuadrant(r.settled_quadrant) ?? toQuadrant(r.quadrant))! })).filter((w) => w.quadrant),
     members: syms.map((m) => ({ symbol: m.symbol, name: m.company_name ?? m.symbol, ret: ret(m.symbol) })),
+    rsi: rsiRow.data?.rsi14 !== undefined && rsiRow.data?.rsi14 !== null ? Number(rsiRow.data.rsi14) : null,
   };
 }
 
@@ -152,6 +156,7 @@ export function DetailPanel({ row, benchmark, benchmarkKey, asOf, onClose }: { r
             {cap(standing(row, benchmark))}.
             {row.breadth ? ` ${Math.round(row.breadth.pctAbove)}% of its ${row.breadth.members} stocks are above their 50-day average.` : ""}
             {row.breadth?.narrow ? ` The move is narrow: the ${narrowText(row.breadth)} over 4 weeks.` : ""}
+            {detail?.rsi !== null && detail?.rsi !== undefined ? ` The index's RSI is ${Math.round(detail.rsi)}: ${rsiWords(detail.rsi)}.` : ""}
           </p>
 
           {row.held ? (
