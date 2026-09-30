@@ -6,6 +6,8 @@
 #   backfill  fill 3 years of index_prices (≈15 minutes; resumable, safe to re-run)
 #   stocks    fill 3 years of stock_prices for index constituents (≈30 minutes; resumable, re-run if it times out)
 #   rotation  print this week's rotation quadrants from index_prices (reads only)
+#   breadth   recompute every rotation score (with the steady labels), then breadth and the
+#             market regime for every week in 3 years (≈5 minutes). Run once after Day 4 merges
 #   refill    after adding indices to tracked_indices: download 3 years again for all of them,
 #             then recompute every rotation score (≈15 minutes)
 #
@@ -19,7 +21,7 @@ on:
       job:
         description: Which job to run
         type: choice
-        options: [probe, sectors, backfill, stocks, rotation, refill]
+        options: [probe, sectors, backfill, stocks, rotation, breadth, refill]
         default: probe
       years:
         description: Years of history for backfill
@@ -97,3 +99,13 @@ jobs:
         run: |
           python backfill_index_prices.py --years "$YEARS" --refill
           python compute_rotation.py --full
+          python compute_breadth.py --full
+
+      - name: Rotation, breadth and regime for every week
+        if: github.event_name == 'workflow_dispatch' && inputs.job == 'breadth'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          python compute_rotation.py --full
+          python compute_breadth.py --full

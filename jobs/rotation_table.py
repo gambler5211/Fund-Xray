@@ -52,11 +52,15 @@ def main() -> None:
     summary("| Index | Quadrant | Ratio | Momentum | Ratio vs 4 weeks ago | Path over 8 weeks |")
     summary("| --- | --- | ---: | ---: | ---: | --- |")
     for r in rows:
-        path = " → ".join(q for i, q in enumerate(t.quadrant for t in r.tail) if i == 0 or q != r.tail[i - 1].quadrant) if r.tail else (r.note or "")
-        summary(f"| {labels.get(r.key, r.key)} | {r.quadrant or '–'} | {fmt(r.ratio, 2)} | {fmt(r.momentum, 2)} | {fmt(r.ratio_change_4w, 2, True)} | {path} |")
+        labels_ = [t.label for t in r.tail]
+        path = " → ".join(q for i, q in enumerate(labels_) if i == 0 or q != labels_[i - 1]) if r.tail else (r.note or "")
+        quad = (r.quadrant or "–") + (" (on the line)" if r.tail and r.note else "")
+        summary(f"| {labels.get(r.key, r.key)} | {quad} | {fmt(r.ratio, 2)} | {fmt(r.momentum, 2)} | {fmt(r.ratio_change_4w, 2, True)} | {path} |")
     counts = {q: sum(r.quadrant == q for r in rows) for q in rot.QUADRANTS}
     summary("")
     summary("Counts: " + ", ".join(f"{q} {c}" for q, c in counts.items()))
+    summary(f"Quadrants are the steady labels: a sector keeps its side of a line until it crosses by more than "
+            f"{rot.NEUTRAL_BAND} points. \"On the line\" means it's within that band now.")
 
 
 if __name__ == "__main__":
