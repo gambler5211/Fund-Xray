@@ -3,11 +3,10 @@ import { EmptyState, Kicker, SectionHeader } from "@/components/Section";
 import { ErrorState } from "@/components/kit/States";
 import { LinkButton } from "@/components/kit/Button";
 import { QuadrantChip } from "@/components/kit/QuadrantChip";
-import { QUADRANTS } from "@/lib/quadrant";
 import {
-  BENCHMARK_KEYS,
   BENCHMARK_LABELS,
-  CLOCKWISE,
+  CYCLICAL_NAMES,
+  DEFENSIVE_NAMES,
   biggestMoves,
   isBenchmarkKey,
   loadRotation,
@@ -15,29 +14,24 @@ import {
   rotationHeadline,
   sinceShort,
   standing,
+  userBenchmark,
   type BenchmarkKey,
-  type IndexRow,
+  type RegimeInfo,
 } from "@/lib/rotation";
-import { fromRow } from "@/lib/settings";
-import { currentUser, supabaseServer } from "@/lib/supabase/server";
+import { currentUser } from "@/lib/supabase/server";
 import { RotationChart } from "./RotationChart";
+import { RotationTable } from "./RotationTable";
 
 export const metadata = { title: "Rotation · Fund X-Ray" };
 
 const weekOf = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
 const shareText = (n: number) => `${n >= 9.95 ? Math.round(n) : n.toFixed(1)}%`;
 
-async function defaultBenchmark(userId: string): Promise<BenchmarkKey> {
-  const supabase = await supabaseServer();
-  const { data } = await supabase.from("settings").select("benchmark").eq("user_id", userId).maybeSingle();
-  return BENCHMARK_KEYS[fromRow((data ?? {}) as Record<string, unknown>).benchmark];
-}
-
 export default async function RotationPage({ searchParams }: { searchParams: Promise<{ b?: string }> }) {
   const { b } = await searchParams;
   const user = await currentUser();
   if (!user) return null;
-  const mine = await defaultBenchmark(user.id);
+  const mine = await userBenchmark(user.id);
   const benchmark = isBenchmarkKey(b) ? b : mine;
   const name = BENCHMARK_LABELS[benchmark];
   const data = await loadRotation(benchmark);
@@ -142,10 +136,81 @@ export default async function RotationPage({ searchParams }: { searchParams: Pro
         </p>
       </section>
 
-      <section className="flex flex-col gap-4 py-7">
-        <SectionHeader title="Every sector by quadrant" aside="Strongest first" />
-        <QuadrantLists rows={rows} />
+      <HowItWorks benchmark={name} />
+
+      <section className="flex flex-col gap-5 py-7">
+        <SectionHeader title="Every sector" aside="Tap a name for its detail" />
+        {data.regime ? <RegimeLine r={data.regime} /> : null}
+        <RotationTable rows={rows} benchmark={name} benchmarkKey={benchmark} asOf={asOf} />
+        <p className="font-sans text-caption leading-relaxed text-ink-3">
+          Ratio, 4 wks: change in Ratio over four weeks. Above 50-day: share of the index&apos;s stocks trading above their own 50-day average. Narrow: the
+          index moved more than 3 points away from its average stock over 20 trading days, so a few large companies carried it.
+        </p>
       </section>
+    </div>
+  );
+}
+
+/** The calculation in five short steps, folded away until asked for. */
+function HowItWorks({ benchmark }: { benchmark: string }) {
+  const steps: [string, string][] = [
+    ["Relative strength", `Each day, the sector index divided by the ${benchmark}. Rising means the sector beat the market that day. Everything here is relative: a sector can be "ahead" while still losing money, if the market fell further.`],
+    ["Ratio", "Today's relative strength against its own average over the last 50 trading days, where 100 is normal. Above 100 the sector is ahead, below it behind."],
+    ["Momentum", "Today's Ratio against the Ratio two weeks (10 trading days) earlier. Above 100 the lead is growing or the gap closing; below it, the opposite."],
+    ["Quadrant", "The two together: Leading (ahead, gaining), Weakening (ahead, slowing), Lagging (behind, slipping), Improving (behind, recovering). Sectors tend to move round clockwise. A label only changes once a sector crosses a line by more than half a point."],
+    ["Your money", "Each holding's NSE sector is matched to its closest index, and your holdings are added up per index. Funds and sectors without an index are counted separately."],
+  ];
+  return (
+    <details className="group border-b border-ink py-5">
+      <summary className="flex cursor-pointer list-none items-baseline justify-between gap-4 font-sans text-ui font-semibold text-ink">
+        How these numbers are worked out
+        <span aria-hidden className="text-ink-3 group-open:hidden">Show</span>
+        <span aria-hidden className="hidden text-ink-3 group-open:inline">Hide</span>
+      </summary>
+      <ol className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        {steps.map(([title, body], i) => (
+          <li key={title} className="flex flex-col gap-1">
+            <span className="font-sans text-caption font-semibold uppercase tracking-[0.12em] text-accent">
+              {i + 1}. {title}
+            </span>
+            <span className="text-ui leading-relaxed text-ink-2">{body}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-4 font-sans text-caption text-ink-3">
+        It describes the last few weeks, not the future, and none of it is advice to buy or sell.
+      </p>
+    </details>
+  );
+}
+
+const regimeTone: Record<RegimeInfo["regime"], string> = { "Cyclical lead": "text-q-leading", "Defensive lead": "text-q-weakening", Neutral: "text-ink" };
+const signedPts = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : ""}${Math.abs(n).toFixed(1)}`;
+
+/** The regime, the rule that produced it, and this week's numbers. Always measured against the Nifty 500. */
+function RegimeLine({ r }: { r: RegimeInfo }) {
+  const held = r.weeks >= 12 ? "for 12 weeks or more" : r.weeks === 1 ? `new this week${r.prev ? `, after ${r.prev}` : ""}` : `for ${r.weeks} weeks`;
+  return (
+    <div className="flex flex-col gap-2 border border-ink p-4 md:p-5">
+      <p className="text-lead">
+        <span className="font-sans text-caption font-semibold uppercase tracking-[0.12em] text-ink-3">Regime </span>
+        <span className={`font-semibold ${regimeTone[r.regime]}`}>{r.regime}</span>
+        <span className="text-ink-3"> · {held}</span>
+      </p>
+      <p className="max-w-[80ch] text-ui leading-relaxed text-ink-2">
+        The rule: <strong>Cyclical lead</strong> when the average Ratio of {CYCLICAL_NAMES} beats that of {DEFENSIVE_NAMES} by more than {r.threshold} and
+        over {r.breadthMin}% of Nifty 500 stocks are above their 50-day average; <strong>Defensive lead</strong> when it trails by more than {r.threshold};
+        otherwise <strong>Neutral</strong>. Always against the Nifty 500.
+      </p>
+      <p className="figures font-sans text-ui text-ink">
+        This week: cyclical − defensive = {signedPts(r.spread)} ({r.cyclical.toFixed(2)} vs {r.defensive.toFixed(2)})
+        {r.marketBreadth !== null ? `; market breadth ${Math.round(r.marketBreadth)}%` : ""}.
+      </p>
+      <p className="max-w-[80ch] font-sans text-caption leading-relaxed text-ink-3">
+        What it is and isn&apos;t: this says which group is ahead now. Tested on 145 weeks, it did not tell you which group would do
+        better over the next 4 to 8 weeks (right 49% of the time, when simply betting on cyclicals was right 53%). No threshold did
+        better, so these are the starting values.
+      </p>
     </div>
   );
 }
@@ -175,37 +240,3 @@ function BenchmarkSwitch({ current, mine }: { current: BenchmarkKey; mine: Bench
   );
 }
 
-function QuadrantLists({ rows }: { rows: IndexRow[] }) {
-  return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-      {CLOCKWISE.map((q) => {
-        const inQ = rows.filter((r) => r.now.quadrant === q).sort((a, b) => b.now.ratio - a.now.ratio);
-        return (
-          <div key={q} className="flex flex-col gap-2">
-            <div className="flex items-baseline justify-between border-b border-ink pb-1">
-              <QuadrantChip quadrant={q} />
-              <span className="font-sans text-caption text-ink-3">{inQ.length || "None"}</span>
-            </div>
-            <p className="font-sans text-caption text-ink-3">{QUADRANTS[q].blurb}</p>
-            <ul className="flex flex-col">
-              {inQ.map((r) => (
-                <li key={r.key} className="flex items-baseline justify-between gap-3 border-b border-rule py-2">
-                  <span className={`flex flex-col ${r.held ? "font-semibold text-ink" : "text-ink-2"}`}>
-                    <span>{r.label}</span>
-                    <span className="font-sans text-caption font-normal text-ink-3">
-                      {r.nearLine ? "On the line · " : ""}
-                      {r.prev && r.prev.quadrant !== q ? `New, was ${QUADRANTS[r.prev.quadrant].label}` : ""}
-                      {r.prev && r.prev.quadrant !== q ? " · " : ""}
-                      <span className="figures">{r.now.ratio.toFixed(2)} / {r.now.momentum.toFixed(2)}</span>
-                    </span>
-                  </span>
-                  {r.held ? <span className="figures shrink-0 font-semibold">{shareText(r.held.share)}</span> : null}
-                </li>
-              ))}
-            </ul>
-          </div>
-        );
-      })}
-    </div>
-  );
-}

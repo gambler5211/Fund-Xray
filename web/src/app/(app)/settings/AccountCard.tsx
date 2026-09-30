@@ -160,7 +160,7 @@ function DeleteAccount({ demo }: { demo: boolean }) {
       return;
     }
     await supabase.auth.signOut();
-    window.location.assign("/login?deleted=1");
+    window.location.assign("/welcome?deleted=1");
   }
 
   if (!open) {

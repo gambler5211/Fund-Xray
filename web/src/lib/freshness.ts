@@ -2,7 +2,7 @@ import { cache } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { latestSnapshot } from "@/lib/holdings";
 
-export type NightlyRun = { status: "ok" | "failed"; finishedAt: string; summary: string | null; latestDate: string | null };
+export type NightlyRun = { status: "ok" | "failed"; finishedAt: string; summary: string | null; latestDate: string | null; rotationDate: string | null };
 export type Freshness = { kiteSyncedAt: string | null; nightly: NightlyRun | null };
 
 /** How old the data on screen is: your last Kite pull and the last nightly market-data run. */
@@ -12,10 +12,10 @@ export const freshness = cache(async (): Promise<Freshness> => {
     latestSnapshot(),
     supabase.from("job_runs").select("status, finished_at, summary, details").eq("job", "nightly").order("started_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
-  const r = run.data as { status: "ok" | "failed"; finished_at: string; summary: string | null; details: { latest_date?: string | null } | null } | null;
+  const r = run.data as { status: "ok" | "failed"; finished_at: string; summary: string | null; details: { latest_date?: string | null; rotation_latest?: string | null } | null } | null;
   return {
     kiteSyncedAt: snap?.taken_at ?? null,
-    nightly: r ? { status: r.status, finishedAt: r.finished_at, summary: r.summary, latestDate: r.details?.latest_date ?? null } : null,
+    nightly: r ? { status: r.status, finishedAt: r.finished_at, summary: r.summary, latestDate: r.details?.latest_date ?? null, rotationDate: r.details?.rotation_latest ?? null } : null,
   };
 });
 

@@ -48,7 +48,13 @@ const DATA = [
   "One button in Settings deletes everything, for good.",
 ];
 
-export default function WelcomePage() {
+export default async function WelcomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ signed_out?: string; deleted?: string }>;
+}) {
+  const sp = await searchParams;
+  const notice = sp.deleted ? "Your account and all its data have been deleted." : sp.signed_out ? "You're signed out." : null;
   return (
     <div className="mx-auto flex min-h-dvh max-w-[1440px] flex-col px-5 pb-6 md:px-18">
       {/* Date line */}
@@ -62,6 +68,12 @@ export default function WelcomePage() {
           <ThemeToggle />
         </div>
       </div>
+
+      {notice ? (
+        <p role="status" className="mb-3 border-y border-rule py-2 text-center font-sans text-ui text-ink-2">
+          {notice}
+        </p>
+      ) : null}
 
       {/* Masthead */}
       <header className="flex flex-col items-center gap-3 border-t-[3px] border-b border-ink py-3">

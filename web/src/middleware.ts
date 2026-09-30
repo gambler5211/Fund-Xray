@@ -41,6 +41,8 @@ export async function middleware(request: NextRequest) {
     return r;
   };
 
+  // The site's front door is the welcome page; deep links go to sign-in and come back after.
+  if (!signedIn && path === "/") return redirect("/welcome");
   if (!signedIn && !matches(path, PUBLIC)) return redirect("/login", true);
   if (signedIn && matches(path, SIGNED_OUT_ONLY)) return redirect("/");
   return response;

@@ -18,6 +18,7 @@ export async function Freshness() {
     market = (
       <span className={late ? "text-warn" : undefined} title={f.nightly.summary ?? undefined}>
         Market data to {close}
+        {f.nightly.rotationDate ? `; rotation to ${istTime(f.nightly.rotationDate + "T12:00:00+05:30", DAY_ONLY)}` : ""}
         {late ? `, last updated ${istTime(f.nightly.finishedAt, DAY_ONLY)}` : ""}
       </span>
     );

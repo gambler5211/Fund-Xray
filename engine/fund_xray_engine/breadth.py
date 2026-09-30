@@ -22,7 +22,9 @@ The regime compares the cyclical and defensive groups' Ratios against the Nifty 
     Defensive lead  that difference < -REGIME_THRESHOLD
     Neutral         otherwise
 
-Starting values from the plan; Day 7 backtests and tunes them. Pure functions, no network.
+Starting values from the plan. Day 7 backtested them (docs/regime-backtest.md): no threshold from
+±1 to ±4 or breadth cut-off from 40 to 60% predicted the next 4 or 8 weeks better than chance, so
+they stay as they are and the label is shown as a description of now, not a forecast. Pure functions, no network.
 """
 
 from __future__ import annotations
@@ -139,6 +141,17 @@ def breadth(members: Mapping[str, Mapping[date, float]], index: Mapping[date, fl
     return out
 
 
+def classify(spread: float, market_breadth: float | None,
+             threshold: float = REGIME_THRESHOLD, breadth_min: float = REGIME_BREADTH) -> str:
+    """The regime label for one week from the group spread and market breadth. One place for the
+    rule, so the nightly job and the backtest can't drift apart."""
+    if spread > threshold and market_breadth is not None and market_breadth > breadth_min:
+        return CYCLICAL_LEAD
+    if spread < -threshold:
+        return DEFENSIVE_LEAD
+    return NEUTRAL
+
+
 def regime(ratios: Mapping[str, float], market_breadth: float | None, on: date,
            threshold: float = REGIME_THRESHOLD, breadth_min: float = REGIME_BREADTH,
            cyclical: Sequence[str] = CYCLICAL, defensive: Sequence[str] = DEFENSIVE) -> Regime | None:
@@ -150,13 +163,7 @@ def regime(ratios: Mapping[str, float], market_breadth: float | None, on: date,
         return None
     c, f = sum(cyc) / len(cyc), sum(dfn) / len(dfn)
     spread = c - f
-    if spread > threshold and market_breadth is not None and market_breadth > breadth_min:
-        label = CYCLICAL_LEAD
-    elif spread < -threshold:
-        label = DEFENSIVE_LEAD
-    else:
-        label = NEUTRAL
-    return Regime(on, c, f, spread, market_breadth, label)
+    return Regime(on, c, f, spread, market_breadth, classify(spread, market_breadth, threshold, breadth_min))
 
 
 def week_ends(calendar: Sequence[date]) -> list[date]:

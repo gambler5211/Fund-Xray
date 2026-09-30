@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { KiteCard } from "@/components/KiteCard";
+import { RotationCard } from "@/components/RotationCard";
 import { Notice } from "@/components/Notice";
 import { EmptyState, Kicker } from "@/components/Section";
 import { KITE_NOTICES, kiteStatus } from "@/lib/kite";
@@ -36,15 +37,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       </div>
 
       <div className="grid gap-6 py-7 md:grid-cols-2 md:gap-10">
-        <EmptyState
-          title="Rotation"
-          body="Sector strength against the Nifty 500 in four quadrants, with your money placed on it."
-          action={
-            <Link href="/rotation" className="font-sans text-ui">
-              Arrives in week 2
-            </Link>
-          }
-        />
+        {user ? (
+          <RotationCard userId={user.id} />
+        ) : (
+          <EmptyState title="Rotation" body="Sector strength against your benchmark in four quadrants, with your money placed on it." />
+        )}
         <EmptyState
           title="Health checks"
           body="Surveillance lists, red flags, promoter pledges and exit liquidity for whatever you hold."
