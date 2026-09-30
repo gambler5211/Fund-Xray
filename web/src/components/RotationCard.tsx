@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { Kicker } from "@/components/Section";
-import { BENCHMARK_LABELS, CLOCKWISE, loadRotation, moneyByQuadrant, moves, userBenchmark } from "@/lib/rotation";
-import { QUADRANTS } from "@/lib/quadrant";
+import { BENCHMARK_LABELS, loadRotation, moves, userBenchmark } from "@/lib/rotation";
 
 const weekOf = (d: string) => new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "UTC" });
-const pctText = (n: number) => `${n >= 9.95 ? Math.round(n) : n.toFixed(1)}%`;
 
-/** Today's rotation summary: the regime, how many sectors moved, where your money sits, a link to the page. */
+/** Today's rotation summary: the regime, how many sectors moved, a link to the page. Your money split leads the page itself. */
 export async function RotationCard({ userId }: { userId: string }) {
   const benchmark = await userBenchmark(userId);
   const data = await loadRotation(benchmark);
@@ -29,8 +27,6 @@ export async function RotationCard({ userId }: { userId: string }) {
     );
   }
   const { moved } = moves(data.rows);
-  const money = moneyByQuadrant(data.rows);
-  const parts = CLOCKWISE.filter((q) => money[q] >= 0.05).map((q) => `${pctText(money[q])} ${QUADRANTS[q].label}`);
   const r = data.regime;
   return shell(
     <>
@@ -41,7 +37,7 @@ export async function RotationCard({ userId }: { userId: string }) {
       <p className="text-body leading-relaxed text-ink-2">
         {moved.length === 0 ? "No sector changed quadrant this week" : `${moved.length} ${moved.length === 1 ? "sector" : "sectors"} changed quadrant this week`}
         {` against the ${BENCHMARK_LABELS[benchmark]}.`}
-        {data.hasHoldings && parts.length ? ` Your money: ${parts.join(", ")}.` : ""}
+        {" The regime says which group of sectors is ahead now, not what comes next."}
       </p>
     </>,
   );
