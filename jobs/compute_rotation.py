@@ -52,7 +52,8 @@ def score_rows(prices: dict[str, dict[date, float]], keys: list[str], since: dat
                     continue
                 rows.append({"index_key": key, "benchmark_key": bench, "date": s.date.isoformat(),
                              "rs": round(s.rs, 8), "ratio": round(s.ratio, 4), "momentum": round(s.momentum, 4),
-                             "quadrant": s.quadrant, "week_end": s.date in week_ends})
+                             "quadrant": s.quadrant, "settled_quadrant": s.settled,
+                             "week_end": s.date in week_ends})
             last = daily[-1].date
             stats["latest"] = max(stats["latest"] or last, last)
     return rows, stats

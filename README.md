@@ -174,6 +174,26 @@ time limit, run it again and it carries on). The nightly job then adds each day.
 A sector gaining or losing at a steady pace settles on the Momentum = 100 line; it only moves up
 or down when its pace against the benchmark changes. That's how the maths works, not a bug.
 
+Steady labels: many sectors sit within a fraction of a point of 100, where the raw quadrant flips
+on noise. `rotation_scores.settled_quadrant` keeps a sector on its side of each line until it
+crosses by more than half a point (`rotation.NEUTRAL_BAND`); `quadrant` keeps the raw reading.
+The page shows the settled label and greys sectors that are within the band ("on the line").
+
+`engine/fund_xray_engine/breadth.py` adds, for every index each week (`index_breadth`): the share
+of its stocks above their 50-day average, the share up over 20 trading days, the equal-weight
+return beside the index's own, and a **narrow** flag when the two differ by more than 3 points
+(a few large stocks carried or dragged the index). Prices are adjusted for splits and bonuses by
+chaining close ÷ NSE's previous close. Membership is today's list applied to past weeks too, so
+older weeks leave out stocks that have since left an index.
+
+`market_regime` holds one label per week: **Cyclical lead** when the cyclical group's average
+Ratio vs the Nifty 500 (Bank, Auto, Metal, Realty, Infrastructure, PSE) beats the defensive
+group's (FMCG, Pharma, Healthcare) by more than 2 and over 50% of Nifty 500 stocks are above their
+50-day average; **Defensive lead** when it trails by more than 2; otherwise **Neutral**. The
+thresholds are starting values; Week 2 Day 7 backtests them. First fill after merging: Actions →
+NSE data → `breadth` (recomputes rotation with the steady labels, then breadth and regime; about
+5 minutes). The nightly job keeps all three current.
+
 ## Run it locally
 
 Web (Node 20 or newer):
