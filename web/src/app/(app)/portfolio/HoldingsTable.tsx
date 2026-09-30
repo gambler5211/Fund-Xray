@@ -7,6 +7,7 @@ import { count, pct, price, rupees, signedPct, signedRupees } from "@/lib/format
 import type { HoldingRowData } from "@/lib/holdings";
 import { instrumentKey, type SectorMap } from "@/lib/sectorsShared";
 import { SLOW_EXIT_DAYS, daysText, holdingFlags, type LiquidityMap } from "@/lib/liquidityShared";
+import { rsiWords, type RsiMap } from "@/lib/indicatorsShared";
 import { SectorPicker } from "./SectorPicker";
 
 const tone = (n: number) => (n > 0 ? "text-gain" : n < 0 ? "text-loss" : "text-ink-3");
@@ -35,7 +36,7 @@ function Flags({ items }: { items: string[] }) {
   );
 }
 
-function columns(sectors: SectorMap, liquidity: LiquidityMap, stockLimit: number): ColumnDef<HoldingRowData, unknown>[] {
+function columns(sectors: SectorMap, liquidity: LiquidityMap, stockLimit: number, rsi: RsiMap): ColumnDef<HoldingRowData, unknown>[] {
   const days = (h: HoldingRowData) => liquidity[instrumentKey(h)]?.days ?? null;
   return [
   {
@@ -67,6 +68,16 @@ function columns(sectors: SectorMap, liquidity: LiquidityMap, stockLimit: number
   { id: "pnl", header: "P/L", accessorFn: (h) => h.pnl_pct, cell: ({ row: { original: h } }) => <Both amount={h.pnl} change={h.pnl_pct} />, meta: { align: "right" } },
   { id: "weight", header: "Weight", accessorFn: (h) => h.weight_pct, cell: (c) => pct(c.getValue() as number), meta: { align: "right" } },
   {
+    id: "rsi",
+    header: "RSI",
+    accessorFn: (h) => rsi[h.symbol] ?? -1,
+    cell: ({ row: { original: h } }) => {
+      const v = rsi[h.symbol];
+      return v === undefined ? <span className="text-ink-3">–</span> : <span title={`RSI ${Math.round(v)}: ${rsiWords(v)}`}>{Math.round(v)}</span>;
+    },
+    meta: { align: "right" },
+  },
+  {
     id: "exit",
     header: "Days to sell",
     accessorFn: (h) => days(h) ?? Number.POSITIVE_INFINITY,
@@ -88,13 +99,15 @@ export function HoldingsTable({
   sectors,
   liquidity,
   stockLimit,
+  rsi,
 }: {
   holdings: HoldingRowData[];
   sectors: SectorMap;
   liquidity: LiquidityMap;
   stockLimit: number;
+  rsi: RsiMap;
 }) {
-  const cols = useMemo(() => columns(sectors, liquidity, stockLimit), [sectors, liquidity, stockLimit]);
+  const cols = useMemo(() => columns(sectors, liquidity, stockLimit, rsi), [sectors, liquidity, stockLimit, rsi]);
   const [q, setQ] = useState("");
   const [losersFirst, setLosersFirst] = useState(false);
 
@@ -166,7 +179,10 @@ export function HoldingsTable({
                   {signedRupees(h.pnl)} ({signedPct(h.pnl_pct)})
                 </span>
                 <span className="col-span-2 flex flex-col gap-0.5">
-                  <span className="figures font-sans text-caption text-ink-3">Days to sell: {daysText(liquidity[instrumentKey(h)]?.days ?? null)}</span>
+                  <span className="figures font-sans text-caption text-ink-3">
+                    Days to sell: {daysText(liquidity[instrumentKey(h)]?.days ?? null)}
+                    {rsi[h.symbol] !== undefined ? ` · RSI ${Math.round(rsi[h.symbol])}, ${rsiWords(rsi[h.symbol])}` : ""}
+                  </span>
                   <Flags items={holdingFlags(h.weight_pct, liquidity[instrumentKey(h)]?.days ?? null, stockLimit)} />
                 </span>
               </li>

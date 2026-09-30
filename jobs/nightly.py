@@ -17,6 +17,7 @@ from backfill_stock_prices import backfill_stocks
 from compute_alignment import compute as compute_alignment
 from compute_breadth import compute as compute_breadth
 from compute_concentration import compute as compute_concentration
+from compute_indicators import compute as compute_indicators
 from compute_rotation import compute as compute_rotation
 from common import db_select, log_run, summary
 
@@ -39,6 +40,7 @@ def main() -> None:
         breadth = compute_breadth(full=False)
         alignment = compute_alignment(full=False)
         concentration = compute_concentration()
+        indicators = compute_indicators()
     except Exception as e:
         log_run("nightly", started, "failed", f"Nightly run failed: {str(e)[:300]}")
         raise
@@ -63,7 +65,8 @@ def main() -> None:
                                              "missing_indices": res["missing_indices"], "stock_days": len(stocks["saved"]),
                                              "rotation_latest": rotation["latest"].isoformat() if rotation.get("latest") else None,
                                              "regime": breadth.get("regime"), "alignment_rows": alignment["rows"],
-                                             "concentration_users": concentration["users"]})
+                                             "concentration_users": concentration["users"],
+                                             "rsi_stocks": indicators["stocks"]})
 
 
 if __name__ == "__main__":

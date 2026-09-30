@@ -10,12 +10,15 @@ import { REFRESH_ERRORS } from "@/lib/refresh";
 import { currentUser, supabaseServer } from "@/lib/supabase/server";
 import { loadConcentration } from "@/lib/concentration";
 import { liquidityFor } from "@/lib/liquidity";
+import { isIndexFund, plan, rsiFor } from "@/lib/indicators";
+import { instrumentKey } from "@/lib/sectorsShared";
 import { SETTINGS_COLUMNS, fromRow } from "@/lib/settings";
 import { sectorSplit, sectorsFor } from "@/lib/sectors";
 import { HoldingsTable } from "./HoldingsTable";
 import { WhereMoneySits } from "./WhereMoneySits";
 import { PullButton } from "./PullButton";
 import { SpreadOut } from "./SpreadOut";
+import { Planner } from "./Planner";
 
 export const metadata = { title: "Portfolio · Fund X-Ray" };
 
@@ -49,13 +52,18 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
   }
 
   const supabase = await supabaseServer();
-  const [sectors, liquidity, concentration, settingsRow] = await Promise.all([
+  const [sectors, liquidity, concentration, settingsRow, rsi] = await Promise.all([
     sectorsFor(snap.holdings),
     liquidityFor(snap.holdings),
     loadConcentration(user.id),
     supabase.from("settings").select(SETTINGS_COLUMNS).eq("user_id", user.id).maybeSingle(),
+    rsiFor(snap.holdings.filter((h) => h.exchange === "NSE").map((h) => h.symbol)),
   ]);
-  const stockLimit = fromRow((settingsRow.data ?? {}) as Record<string, unknown>).alert_stock_weight_pct;
+  const settings = fromRow((settingsRow.data ?? {}) as Record<string, unknown>);
+  const stockLimit = settings.alert_stock_weight_pct;
+  const indexHoldings = snap.holdings.filter((h) => isIndexFund(h.symbol, h.name, sectors[instrumentKey(h)]?.industry === "ETFs & funds"));
+  const indexValue = indexHoldings.reduce((s, h) => s + h.value, 0);
+  const allocation = plan(snap.totals.value, indexValue, settings.index_target_low, settings.index_target_high, settings.monthly_amount);
   const groups = sectorSplit(snap.holdings, sectors);
   const t = snap.totals;
   const asOf = istTime(snap.taken_at, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -94,13 +102,19 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
         <SpreadOut c={concentration} snapshotAt={snap.taken_at} />
       </section>
 
+      <section className="flex flex-col gap-4 border-b border-ink py-7">
+        <SectionHeader title="Index share and next month" aside={`Target ${settings.index_target_low}–${settings.index_target_high}%`} />
+        <Planner p={allocation} indexValue={indexValue} monthly={settings.monthly_amount} funds={indexHoldings.map((h) => h.symbol)} />
+      </section>
+
       <section id="holdings" className="flex scroll-mt-4 flex-col gap-4 py-7">
         <SectionHeader title="Holdings" aside={`Worth ${rupees(t.value)}`} />
-        <HoldingsTable holdings={snap.holdings} sectors={sectors} liquidity={liquidity} stockLimit={stockLimit} />
+        <HoldingsTable holdings={snap.holdings} sectors={sectors} liquidity={liquidity} stockLimit={stockLimit} rsi={rsi} />
         <p className="font-sans text-caption text-ink-3">
           Source: Zerodha Kite, holdings as of {asOf} IST. Totals worked out by Fund X-Ray; quantities include T1 shares. Shares bought today appear
           under Positions until tomorrow. Days to sell assumes you sell no more than 10% of the stock&apos;s average daily NSE volume over
-          the last 20 sessions, so your own selling doesn&apos;t move the price; flagged above 5 days.
+          the last 20 sessions, so your own selling doesn&apos;t move the price; flagged above 5 days. RSI is the 14-day
+          relative strength index from NSE closes (adjusted for splits): it describes how hard the price has moved recently, not where it goes next.
         </p>
       </section>
 
