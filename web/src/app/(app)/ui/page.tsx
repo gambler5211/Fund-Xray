@@ -15,6 +15,7 @@ import { Badge, QuadrantBadge } from "@/components/kit/Badge";
 import { Card } from "@/components/kit/Card";
 import { StatTile } from "@/components/kit/StatTile";
 import { DemoChart, DemoTable } from "./Demos";
+import { ValuationPanel, type ValuationItem } from "../portfolio/ValuationPanel";
 
 export const metadata = { title: "Design kit · Fund X-Ray", robots: { index: false } };
 
@@ -237,8 +238,13 @@ export default function TokensPage() {
       </section>
 
       <section className="flex flex-col gap-4">
+        <SectionHeader title="Valuation panel" aside={<SampleLabel>Sample companies</SampleLabel>} />
+        <ValuationPanel items={SAMPLE_VALUATIONS} noFilings={["Sample Index ETF"]} />
+      </section>
+
+      <section className="flex flex-col gap-4">
         <SectionHeader title="Settings form" aside={<SampleLabel>Demo, saves nowhere</SampleLabel>} />
-        <SettingsForm demo initial={DEFAULT_SETTINGS} />
+        <SettingsForm demo valuation initial={DEFAULT_SETTINGS} />
         <div className="md:max-w-[calc(50%-16px)]">
           <AccountCard demo name="Sample Reader" email="reader@example.com" kite={{ state: "connected", kiteUserId: "AB1234", connectedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 8 * 3600e3).toISOString() }} />
         </div>
@@ -246,3 +252,40 @@ export default function TokensPage() {
     </div>
   );
 }
+
+const SAMPLE_SOURCE = [{ period_end: "2026-06-30", url: "https://www.nseindia.com/companies-listing/corporate-integrated-filing" }];
+const SAMPLE_VALUATIONS: ValuationItem[] = [
+  {
+    key: "NSE:SAMPLEENG",
+    symbol: "SAMPLEENG",
+    name: "Sample Engineering Ltd",
+    weight: 9.4,
+    v: {
+      symbol: "SAMPLEENG", computedAt: new Date().toISOString(), price: 1842.5, priceDate: "2026-10-05", basis: "consolidated", financial: false,
+      pe: { value: 1610.4, low: 1388.2, high: 1904.7, formula: "TTM EPS × median P/E (range: 25th–75th percentile P/E)",
+        inputs: { ttm_eps: 52.4, eps_to: "2026-06-30", median_pe: 30.7, pe_25: 26.5, pe_75: 36.3, current_pe: 35.2, weeks: 152, from: "2023-10-06", to: "2026-10-02" } },
+      graham: { value: 612.3, formula: "√(22.5 × EPS × book value per share)", note: "Reads banks and fast growers harshly: both usually trade well above book value.",
+        inputs: { ttm_eps: 52.4, eps_to: "2026-06-30", book_value_per_share: 318.0, book_value_at: "2026-03-31" } },
+      reverseDcf: { value: 0.164, formula: "The growth rate at which 10 years of free cash flow, plus what follows, discounted at the rate below, adds up to price × shares",
+        inputs: { fcf: 4.12e9, fcf_period: "year to Mar 2026", market_value: 2.31e11, discount_rate: 0.12, terminal_growth: 0.05 } },
+      pastGrowth: { value: 0.112, what: "free cash flow", years: 3 },
+      sources: SAMPLE_SOURCE,
+    },
+  },
+  {
+    key: "NSE:SAMPLEBANK",
+    symbol: "SAMPLEBANK",
+    name: "Sample Bank Ltd",
+    weight: 6.1,
+    v: {
+      symbol: "SAMPLEBANK", computedAt: new Date().toISOString(), price: 742.1, priceDate: "2026-10-05", basis: "consolidated", financial: true,
+      pe: { value: 803.9, low: 701.5, high: 912.0, formula: "TTM EPS × median P/E (range: 25th–75th percentile P/E)",
+        inputs: { ttm_eps: 61.8, eps_to: "2026-06-30", median_pe: 13.0, pe_25: 11.4, pe_75: 14.8, current_pe: 12.0, weeks: 152, from: "2023-10-06", to: "2026-10-02" } },
+      graham: { value: 1032.6, formula: "√(22.5 × EPS × book value per share)", note: "Reads banks and fast growers harshly: both usually trade well above book value.",
+        inputs: { ttm_eps: 61.8, eps_to: "2026-06-30", book_value_per_share: 766.9, book_value_at: "2026-03-31" } },
+      reverseDcf: { missing: "skipped for banks and financial companies: deposits and loans run through their cash flow" },
+      pastGrowth: { value: 0.18, what: "profit", years: 3 },
+      sources: SAMPLE_SOURCE,
+    },
+  },
+];

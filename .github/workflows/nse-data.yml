@@ -14,6 +14,9 @@
 #             snapshots and rotation scores (≈1 minute). Run once after Week 3 Day 1 merges
 #   holdings-prices  3 years of prices for stocks you hold that aren't in any tracked index
 #             (only stocks with no saved history; ≈20 minutes), then recompute concentration and RSI
+#   financials  results filings (EPS, book value, cash flow) for every stock anyone holds, from
+#             NSE's XBRL files (≈15 minutes the first time; resumable; also every Sunday), then
+#             recompute the valuation views
 #   refill    after adding indices to tracked_indices: download 3 years again for all of them,
 #             then recompute every rotation score (≈15 minutes)
 #
@@ -27,7 +30,7 @@ on:
       job:
         description: Which job to run
         type: choice
-        options: [probe, sectors, backfill, stocks, rotation, breadth, backtest, alignment, holdings-prices, refill]
+        options: [probe, sectors, backfill, stocks, rotation, breadth, backtest, alignment, holdings-prices, financials, refill]
         default: probe
       years:
         description: Years of history for backfill
@@ -38,7 +41,7 @@ on:
         options: [nifty-500, nifty-50, nifty-midcap-150, nifty-smallcap-250]
         default: nifty-500
   schedule:
-    - cron: "30 2 * * 0"   # Sundays 08:00 IST: refresh sectors (NSE updates constituents twice a year, plus new listings)
+    - cron: "30 2 * * 0"   # Sundays 08:00 IST: refresh sectors (NSE updates constituents twice a year, plus new listings) and new results filings
 
 concurrency:
   group: nse-data
@@ -139,3 +142,12 @@ jobs:
           python backfill_stock_prices.py --years 3 --new-only
           python compute_concentration.py
           python compute_indicators.py
+
+      - name: Results filings for held stocks, then valuation views
+        if: github.event_name == 'schedule' || inputs.job == 'financials'
+        working-directory: jobs
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: |
+          python import_financials.py
+          python compute_valuations.py

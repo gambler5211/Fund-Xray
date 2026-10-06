@@ -3,6 +3,7 @@ import { ErrorState } from "@/components/kit/States";
 import { DEFAULT_SETTINGS, SETTINGS_COLUMNS, fromRow } from "@/lib/settings";
 import { currentUser, supabaseServer } from "@/lib/supabase/server";
 import { kiteStatus } from "@/lib/kite";
+import { hasValuationAccess } from "@/lib/valuation";
 import { AccountCard } from "./AccountCard";
 import { SettingsForm } from "./SettingsForm";
 
@@ -15,9 +16,10 @@ export default async function SettingsPage() {
   }
 
   const supabase = await supabaseServer();
-  const [settings, kite] = await Promise.all([
+  const [settings, kite, valuation] = await Promise.all([
     supabase.from("settings").select(SETTINGS_COLUMNS).eq("user_id", user.id).maybeSingle(),
     kiteStatus(user.id),
+    hasValuationAccess(),
   ]);
 
   return (
@@ -33,7 +35,7 @@ export default async function SettingsPage() {
       {settings.error ? (
         <ErrorState title="Couldn't load your settings" body="The database didn't answer. Reload the page to try again." />
       ) : (
-        <SettingsForm userId={user.id} initial={settings.data ? fromRow(settings.data as Record<string, unknown>) : DEFAULT_SETTINGS} />
+        <SettingsForm userId={user.id} valuation={valuation} initial={settings.data ? fromRow(settings.data as Record<string, unknown>) : DEFAULT_SETTINGS} />
       )}
 
       <div className="md:max-w-[calc(50%-16px)]">

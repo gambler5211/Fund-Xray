@@ -9,7 +9,7 @@ import { kiteStatus } from "@/lib/kite";
 import { REFRESH_ERRORS } from "@/lib/refresh";
 import { currentUser, supabaseServer } from "@/lib/supabase/server";
 import { loadConcentration } from "@/lib/concentration";
-import { liquidityFor } from "@/lib/liquidity";
+import { liquidityFor, nseSymbols } from "@/lib/liquidity";
 import { isIndexFund, plan, rsiFor } from "@/lib/indicators";
 import { instrumentKey } from "@/lib/sectorsShared";
 import { SETTINGS_COLUMNS, fromRow } from "@/lib/settings";
@@ -19,6 +19,8 @@ import { WhereMoneySits } from "./WhereMoneySits";
 import { PullButton } from "./PullButton";
 import { SpreadOut } from "./SpreadOut";
 import { Planner } from "./Planner";
+import { ValuationPanel, type ValuationItem } from "./ValuationPanel";
+import { hasValuationAccess, loadValuations } from "@/lib/valuation";
 
 export const metadata = { title: "Portfolio · Fund X-Ray" };
 
@@ -52,19 +54,35 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
   }
 
   const supabase = await supabaseServer();
-  const [sectors, liquidity, concentration, settingsRow, rsi] = await Promise.all([
+  const nse = await nseSymbols(snap.holdings);
+  const [sectors, liquidity, concentration, settingsRow, rsiBySymbol, canValue] = await Promise.all([
     sectorsFor(snap.holdings),
-    liquidityFor(snap.holdings),
+    liquidityFor(snap.holdings, nse),
     loadConcentration(user.id),
     supabase.from("settings").select(SETTINGS_COLUMNS).eq("user_id", user.id).maybeSingle(),
-    rsiFor(snap.holdings.filter((h) => h.exchange === "NSE").map((h) => h.symbol)),
+    rsiFor(Object.values(nse)),
+    hasValuationAccess(),
   ]);
+  const valuations = canValue ? await loadValuations(user.id) : {};
+  // RSI keyed like everything else in the table ("EXCHANGE:SYMBOL"), via each holding's NSE symbol
+  const rsi = Object.fromEntries(
+    snap.holdings.flatMap((h) => (rsiBySymbol[nse[instrumentKey(h)]] !== undefined ? [[instrumentKey(h), rsiBySymbol[nse[instrumentKey(h)]]]] : [])),
+  );
   const settings = fromRow((settingsRow.data ?? {}) as Record<string, unknown>);
   const stockLimit = settings.alert_stock_weight_pct;
   const indexHoldings = snap.holdings.filter((h) => isIndexFund(h.symbol, h.name, sectors[instrumentKey(h)]?.industry === "ETFs & funds"));
   const indexValue = indexHoldings.reduce((s, h) => s + h.value, 0);
   const allocation = plan(snap.totals.value, indexValue, settings.index_target_low, settings.index_target_high, settings.monthly_amount);
   const groups = sectorSplit(snap.holdings, sectors);
+  // Valuation panel (accounts with access only): stocks with views, biggest first; index funds left out
+  const stocks = snap.holdings.filter((h) => !indexHoldings.includes(h));
+  const valued: ValuationItem[] = stocks
+    .flatMap((h) => {
+      const v = valuations[nse[instrumentKey(h)]];
+      return v ? [{ key: instrumentKey(h), symbol: nse[instrumentKey(h)], name: h.name || h.symbol, weight: h.weight_pct, v }] : [];
+    })
+    .sort((a, b) => b.weight - a.weight);
+  const noFilings = stocks.filter((h) => !valuations[nse[instrumentKey(h)]]).map((h) => h.name || h.symbol);
   const t = snap.totals;
   const asOf = istTime(snap.taken_at, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
   const stale = kite.state !== "connected";
@@ -117,6 +135,13 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
           relative strength index from NSE closes (adjusted for splits): it describes how hard the price has moved recently, not where it goes next.
         </p>
       </section>
+
+      {canValue ? (
+        <section id="valuation" className="flex scroll-mt-4 flex-col gap-4 border-t border-ink py-7">
+          <SectionHeader title="What the price assumes" aside="Visible to you only" />
+          <ValuationPanel items={valued} noFilings={noFilings} />
+        </section>
+      ) : null}
 
       {snap.positions.length ? (
         <section className="flex flex-col gap-3 pb-7">

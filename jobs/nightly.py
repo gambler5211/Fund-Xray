@@ -1,5 +1,6 @@
 """The nightly run (GitHub Actions, about 7 PM IST on weekdays): add the day's index closes and
-constituent stock prices, then bring rotation_scores, index_breadth and market_regime up to date.
+constituent stock prices, then bring rotation_scores, index_breadth and market_regime up to date,
+followed by alignment, concentration, RSI and the valuation views.
 
 It looks back 10 days rather than just today, so a night that failed, or a file NSE published
 late, is picked up by the next run without anyone re-running anything. Each run is logged to
@@ -19,6 +20,7 @@ from compute_breadth import compute as compute_breadth
 from compute_concentration import compute as compute_concentration
 from compute_indicators import compute as compute_indicators
 from compute_rotation import compute as compute_rotation
+from compute_valuations import compute as compute_valuations
 from common import db_select, log_run, summary
 
 LOOKBACK_DAYS = 10
@@ -41,6 +43,7 @@ def main() -> None:
         alignment = compute_alignment(full=False)
         concentration = compute_concentration()
         indicators = compute_indicators()
+        valuations = compute_valuations()
     except Exception as e:
         log_run("nightly", started, "failed", f"Nightly run failed: {str(e)[:300]}")
         raise
@@ -66,7 +69,8 @@ def main() -> None:
                                              "rotation_latest": rotation["latest"].isoformat() if rotation.get("latest") else None,
                                              "regime": breadth.get("regime"), "alignment_rows": alignment["rows"],
                                              "concentration_users": concentration["users"],
-                                             "rsi_stocks": indicators["stocks"]})
+                                             "rsi_stocks": indicators["stocks"],
+                                             "valuation_stocks": valuations["stocks"]})
 
 
 if __name__ == "__main__":

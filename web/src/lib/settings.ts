@@ -23,15 +23,22 @@ export const settingsSchema = z
     alert_sector_weight_pct: pct(1, 100),
     alert_weakening_share_pct: pct(1, 100),
     alert_day_move_pct: pct(0.5, 50),
+    // Reverse DCF inputs (Week 3, Day 7); the Valuation card shows only for accounts with access
+    valuation_discount_pct: pct(4, 30),
+    valuation_terminal_pct: pct(0, 10),
   })
   .refine((s) => s.index_target_low <= s.index_target_high, {
     path: ["index_target_high"],
     message: "The upper end must be at least the lower end",
+  })
+  .refine((s) => s.valuation_terminal_pct < s.valuation_discount_pct, {
+    path: ["valuation_terminal_pct"],
+    message: "Growth after year 10 must be below the discount rate",
   });
 
 export type SettingsValues = z.infer<typeof settingsSchema>;
 
-export const SETTINGS_COLUMNS = "benchmark,index_target_low,index_target_high,monthly_amount,alert_stock_weight_pct,alert_sector_weight_pct,alert_weakening_share_pct,alert_day_move_pct";
+export const SETTINGS_COLUMNS = "benchmark,index_target_low,index_target_high,monthly_amount,alert_stock_weight_pct,alert_sector_weight_pct,alert_weakening_share_pct,alert_day_move_pct,valuation_discount_pct,valuation_terminal_pct";
 
 /** Defaults used by the database for new users; shown on /ui as sample values. */
 export const DEFAULT_SETTINGS: SettingsValues = {
@@ -43,6 +50,8 @@ export const DEFAULT_SETTINGS: SettingsValues = {
   alert_sector_weight_pct: 30,
   alert_weakening_share_pct: 40,
   alert_day_move_pct: 5,
+  valuation_discount_pct: 12,
+  valuation_terminal_pct: 5,
 };
 
 /** Postgres numeric columns arrive as strings or numbers; normalise to numbers. */
@@ -57,5 +66,7 @@ export function fromRow(row: Record<string, unknown>): SettingsValues {
     alert_sector_weight_pct: n(row.alert_sector_weight_pct) ?? DEFAULT_SETTINGS.alert_sector_weight_pct,
     alert_weakening_share_pct: n(row.alert_weakening_share_pct) ?? DEFAULT_SETTINGS.alert_weakening_share_pct,
     alert_day_move_pct: n(row.alert_day_move_pct) ?? DEFAULT_SETTINGS.alert_day_move_pct,
+    valuation_discount_pct: n(row.valuation_discount_pct) ?? DEFAULT_SETTINGS.valuation_discount_pct,
+    valuation_terminal_pct: n(row.valuation_terminal_pct) ?? DEFAULT_SETTINGS.valuation_terminal_pct,
   };
 }

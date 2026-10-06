@@ -15,6 +15,7 @@ from datetime import date, datetime, timedelta, timezone
 from fund_xray_engine import breadth as br
 from fund_xray_engine import concentration as cc
 
+from backfill_stock_prices import nse_symbol, nse_symbol_map
 from common import db_select, db_select_all, db_upsert, log_run, summary
 
 WINDOW_DAYS = 380  # a year of weeks plus the week before the first return
@@ -61,6 +62,10 @@ def compute() -> dict:
     since = end - timedelta(days=WINDOW_DAYS)
     weeks = iso_weeks(since, end)[-(cc.CORRELATION_WEEKS + 1):]
 
+    by_isin = nse_symbol_map()
+    for s in snaps.values():  # key every holding by its NSE symbol, whichever exchange Kite lists it under
+        for h in s["holdings"]:
+            h["symbol"] = nse_symbol(h, by_isin) or h.get("symbol")
     wanted = {h["symbol"] for s in snaps.values() for h in s["holdings"] if h.get("symbol")}
     prices = load_prices(wanted, since)
 
