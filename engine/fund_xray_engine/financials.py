@@ -103,10 +103,12 @@ def parse_filing(xml_text: str | bytes) -> Filing:
         raise FilingError(f"not XML: {e}") from e
 
     plain: dict[str, dict] = {}  # context id -> {"start", "end", "instant"}, only contexts with no dimensions
+    dimensional: set[str] = set()  # sub-item contexts (a segment, one expense line): never the headline figures
     for c in root.iter():
         if _local(c.tag) != "context":
             continue
         if any(_local(x.tag) == "explicitMember" or _local(x.tag) == "typedMember" for x in c.iter()):
+            dimensional.add(c.get("id", ""))
             continue
         p = {}
         for x in c.iter():
@@ -115,12 +117,15 @@ def parse_filing(xml_text: str | bytes) -> Filing:
                 p[n] = x.text.strip()
         plain[c.get("id", "")] = p
 
+    # Some older files (NSE's "_WEB" copies) leave out the OneD / FourD / OneI context elements while
+    # their figures still point at them, so a figure counts unless its context is a sub-item one.
     facts: dict[str, dict[str, str]] = {}  # tag -> {context id -> text}
     for e in root.iter():
         ctx = e.get("contextRef")
-        if ctx is None or ctx not in plain:
+        if ctx is None or ctx in dimensional:
             continue
         facts.setdefault(_local(e.tag), {})[ctx] = (e.text or "").strip()
+    used = {ctx for vals in facts.values() for ctx in vals}
 
     def text(tag: str) -> str | None:
         vals = facts.get(tag)
@@ -133,9 +138,9 @@ def parse_filing(xml_text: str | bytes) -> Filing:
                 return v
         return None
 
-    quarter_ctx = "OneD" if "OneD" in plain else _guess(plain, "quarter")
-    ytd_ctx = "FourD" if "FourD" in plain else _guess(plain, "ytd")
-    inst_ctx = "OneI" if "OneI" in plain else _guess(plain, "instant")
+    quarter_ctx = "OneD" if "OneD" in plain or "OneD" in used else _guess(plain, "quarter")
+    ytd_ctx = "FourD" if "FourD" in plain or "FourD" in used else _guess(plain, "ytd")
+    inst_ctx = "OneI" if "OneI" in plain or "OneI" in used else _guess(plain, "instant")
 
     end = text("DateOfEndOfReportingPeriod") or (plain.get(quarter_ctx or "", {}).get("endDate"))
     if not end:
