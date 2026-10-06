@@ -10,10 +10,21 @@ import { BENCHMARKS, SETTINGS_COLUMNS, settingsSchema, type SettingsValues } fro
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 /**
- * Portfolio and Alerts settings. Saves straight to Supabase; row-level security makes sure the
+ * Portfolio and Alerts settings, plus Valuation for accounts that can see the valuation panel. Saves straight to Supabase; row-level security makes sure the
  * update can only touch your own row. `demo` skips the network (used on /ui).
  */
-export function SettingsForm({ initial, userId, demo = false }: { initial: SettingsValues; userId?: string; demo?: boolean }) {
+export function SettingsForm({
+  initial,
+  userId,
+  demo = false,
+  valuation = false,
+}: {
+  initial: SettingsValues;
+  userId?: string;
+  demo?: boolean;
+  /** Show the Valuation card (accounts with valuation access only). */
+  valuation?: boolean;
+}) {
   const [toast, setToast] = useState<{ msg: string; tone: "neutral" | "error" } | null>(null);
   const clearToast = useCallback(() => setToast(null), []);
   const {
@@ -99,6 +110,28 @@ export function SettingsForm({ initial, userId, demo = false }: { initial: Setti
           </div>
         </Card>
       </div>
+
+      {valuation ? (
+        <Card title="Valuation">
+          <div className="grid gap-5 md:grid-cols-2 md:gap-8">
+            <PctField
+              label="Discount rate"
+              hint="The yearly return you'd want for the risk. The reverse DCF discounts future cash flow at this rate."
+              reg={register("valuation_discount_pct", num)}
+              error={errors.valuation_discount_pct}
+            />
+            <PctField
+              label="Growth after year 10"
+              hint="How fast cash flow keeps growing for ever after the first 10 years. Must be below the discount rate."
+              reg={register("valuation_terminal_pct", num)}
+              error={errors.valuation_terminal_pct}
+            />
+          </div>
+          <p className="mt-4 font-sans text-caption leading-relaxed text-ink-3">
+            New values apply from the next nightly run. The P/E history and Graham number don&apos;t use these.
+          </p>
+        </Card>
+      ) : null}
 
       <div className="flex items-center gap-4 border-t border-ink pt-4">
         <Button type="submit" disabled={!isDirty || isSubmitting}>

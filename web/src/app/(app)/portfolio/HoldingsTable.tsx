@@ -70,9 +70,9 @@ function columns(sectors: SectorMap, liquidity: LiquidityMap, stockLimit: number
   {
     id: "rsi",
     header: "RSI",
-    accessorFn: (h) => rsi[h.symbol] ?? -1,
+    accessorFn: (h) => rsi[instrumentKey(h)] ?? -1,
     cell: ({ row: { original: h } }) => {
-      const v = rsi[h.symbol];
+      const v = rsi[instrumentKey(h)];
       return v === undefined ? <span className="text-ink-3">–</span> : <span title={`RSI ${Math.round(v)}: ${rsiWords(v)}`}>{Math.round(v)}</span>;
     },
     meta: { align: "right" },
@@ -181,7 +181,7 @@ export function HoldingsTable({
                 <span className="col-span-2 flex flex-col gap-0.5">
                   <span className="figures font-sans text-caption text-ink-3">
                     Days to sell: {daysText(liquidity[instrumentKey(h)]?.days ?? null)}
-                    {rsi[h.symbol] !== undefined ? ` · RSI ${Math.round(rsi[h.symbol])}, ${rsiWords(rsi[h.symbol])}` : ""}
+                    {rsi[instrumentKey(h)] !== undefined ? ` · RSI ${Math.round(rsi[instrumentKey(h)])}, ${rsiWords(rsi[instrumentKey(h)])}` : ""}
                   </span>
                   <Flags items={holdingFlags(h.weight_pct, liquidity[instrumentKey(h)]?.days ?? null, stockLimit)} />
                 </span>

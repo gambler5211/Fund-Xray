@@ -229,6 +229,26 @@ stocks together), and **effective bets** (the same formula over clusters). Holdi
 weeks of prices are listed as left out and count as a bet of their own. `jobs/compute_concentration.py`
 writes one row per user to `portfolio_concentration` in the nightly run.
 
+**Company financials (Week 3).** `jobs/import_financials.py` reads NSE's two results-filing lists
+(`/api/corporates-financial-results` up to Dec 2024, `/api/integrated-filing-results` from 2025),
+picks one XBRL file per quarter (consolidated when the company files it) back to `history_start()`
+(about 3.5 years, enough for three full years of growth), and stores EPS, shares, owners' equity,
+operating cash flow and capex in `company_financials`, with the file's link. Run Actions → NSE data
+→ `probe` first (it now checks the results lists too), then `financials` (about 15 minutes the
+first time; resumable, and repeated every Sunday). The parser is
+`engine/fund_xray_engine/financials.py`; its tests use trimmed copies of real TCS and HDFC Bank
+filings in `engine/tests/fixtures/`. Files it can't read go to `financials_skipped`.
+
+**Valuation (Week 3, you only).** `engine/fund_xray_engine/valuation.py` works out three views per
+held stock: the P/E history value (TTM EPS × the stock's median weekly P/E, with a 25th–75th
+percentile range), the Graham number (√(22.5 × EPS × book value per share)), and a reverse DCF (the
+10-year free-cash-flow growth today's price implies, at your discount rate and growth after year 10
+from Settings). Banks and financial companies skip the reverse DCF. `jobs/compute_valuations.py`
+writes `valuation_views` nightly, but only for accounts in `feature_access` with `valuation`; the
+migration grants it to the first account that signed up. Row-level security hides the rows from
+everyone else even if one existed. To give another account access, add a row in the SQL editor:
+`insert into feature_access (user_id, feature) values ('<their user id>', 'valuation');`
+
 ## Run it locally
 
 Web (Node 20 or newer):

@@ -5,9 +5,21 @@ import { VOLUME_DAYS, daysToSell, type LiquidityMap } from "@/lib/liquidityShare
 
 export * from "@/lib/liquidityShared";
 
+/**
+ * Each holding's NSE symbol, keyed "EXCHANGE:SYMBOL". Kite lists many holdings under BSE (where they
+ * were bought); the ISIN finds the same company in NSE's lists, and the Kite symbol is the fallback.
+ */
+export async function nseSymbols(holdings: HoldingRowData[]): Promise<Record<string, string>> {
+  const supabase = await supabaseServer();
+  const isins = [...new Set(holdings.map((h) => h.isin).filter((x): x is string => !!x))];
+  const { data } = isins.length ? await supabase.from("industry_map").select("isin, symbol").in("isin", isins) : { data: [] };
+  const byIsin = new Map(((data ?? []) as { isin: string; symbol: string }[]).map((r) => [r.isin, r.symbol]));
+  return Object.fromEntries(holdings.map((h) => [instrumentKey(h), (h.isin && byIsin.get(h.isin)) || h.symbol]));
+}
+
 /** Each holding's 20-day average NSE volume and days to sell, from stock_prices. */
-export async function liquidityFor(holdings: HoldingRowData[]): Promise<LiquidityMap> {
-  const symbols = [...new Set(holdings.filter((h) => h.exchange === "NSE").map((h) => h.symbol))];
+export async function liquidityFor(holdings: HoldingRowData[], nse: Record<string, string>): Promise<LiquidityMap> {
+  const symbols = [...new Set(holdings.map((h) => nse[instrumentKey(h)]))];
   const out: LiquidityMap = {};
   if (!symbols.length) return out;
   const supabase = await supabaseServer();
@@ -26,7 +38,7 @@ export async function liquidityFor(holdings: HoldingRowData[]): Promise<Liquidit
     vols.set(r.symbol, list);
   }
   for (const h of holdings) {
-    const list = h.exchange === "NSE" ? (vols.get(h.symbol) ?? []) : [];
+    const list = vols.get(nse[instrumentKey(h)]) ?? [];
     const avg = list.length ? list.reduce((a, b) => a + b, 0) / list.length : null;
     out[instrumentKey(h)] = { avgVolume: avg, days: daysToSell(h.quantity, avg), sessions: list.length };
   }

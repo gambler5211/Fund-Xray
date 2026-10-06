@@ -31,12 +31,25 @@ def constituent_symbols() -> set[str]:
     return {r["symbol"] for r in db_select_all("index_constituents", {"select": "symbol", "order": "symbol"})}
 
 
+def nse_symbol_map() -> dict[str, str]:
+    """ISIN -> NSE symbol, from NSE's own lists (industry_map)."""
+    return {r["isin"]: r["symbol"] for r in db_select_all("industry_map", {"select": "isin,symbol", "order": "isin"})}
+
+
+def nse_symbol(h: dict, by_isin: dict[str, str]) -> str | None:
+    """The NSE symbol for a Kite holding. Kite reports many holdings under BSE (where they were bought);
+    the ISIN finds the same company on NSE, and the Kite symbol is the fallback (usually identical)."""
+    return by_isin.get(h.get("isin") or "") or h.get("symbol")
+
+
 def held_symbols() -> set[str]:
-    """NSE symbols in anyone's recent holdings snapshots (read with the secret key, symbols only kept)."""
+    """NSE symbols for everything in anyone's recent holdings snapshots, whichever exchange Kite lists
+    them under (read with the secret key, symbols only kept)."""
     since = (date.today() - timedelta(days=HELD_DAYS)).isoformat()
+    by_isin = nse_symbol_map()
     out: set[str] = set()
     for r in db_select_all("holdings_snapshot", {"select": "holdings", "taken_at": f"gte.{since}", "order": "id"}):
-        out |= {h["symbol"] for h in (r["holdings"] or []) if h.get("exchange", "NSE") == "NSE" and h.get("symbol")}
+        out |= {s for h in (r["holdings"] or []) if (s := nse_symbol(h, by_isin))}
     return out
 
 

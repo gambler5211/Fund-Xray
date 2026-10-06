@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Trimmed from NSE's Integrated Filing (Financials, banking format) for HDFC Bank, quarter and
+     year to 31 Mar 2026, consolidated. Values copied from the real file. -->
+<xbrli:xbrl xmlns:xbrli="http://www.xbrl.org/2003/instance" xmlns:in-capmkt="http://www.sebi.gov.in/xbrl/2026-01-31/in-capmkt">
+  <xbrli:context id="OneD"><xbrli:entity><xbrli:identifier scheme="http://www.nseindia.com">HDFCBANK</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>2026-01-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period></xbrli:context>
+  <xbrli:context id="FourD"><xbrli:entity><xbrli:identifier scheme="http://www.nseindia.com">HDFCBANK</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:startDate>2025-04-01</xbrli:startDate><xbrli:endDate>2026-03-31</xbrli:endDate></xbrli:period></xbrli:context>
+  <xbrli:context id="OneI"><xbrli:entity><xbrli:identifier scheme="http://www.nseindia.com">HDFCBANK</xbrli:identifier></xbrli:entity><xbrli:period><xbrli:instant>2026-03-31</xbrli:instant></xbrli:period></xbrli:context>
+  <in-capmkt:DateOfEndOfReportingPeriod contextRef="OneD">2026-03-31</in-capmkt:DateOfEndOfReportingPeriod>
+  <in-capmkt:NatureOfReportStandaloneConsolidated contextRef="OneD">Consolidated</in-capmkt:NatureOfReportStandaloneConsolidated>
+  <in-capmkt:PaidUpValueOfEquityShareCapital contextRef="OneD" unitRef="INR" decimals="-5">15393400000</in-capmkt:PaidUpValueOfEquityShareCapital>
+  <in-capmkt:FaceValueOfEquityShareCapital contextRef="OneD" unitRef="INRPerShare" decimals="INF">1</in-capmkt:FaceValueOfEquityShareCapital>
+  <in-capmkt:BasicEarningsPerShareBeforeExtraordinaryItems contextRef="OneD" unitRef="INRPerShare" decimals="2">13.22</in-capmkt:BasicEarningsPerShareBeforeExtraordinaryItems>
+  <in-capmkt:BasicEarningsPerShareAfterExtraordinaryItems contextRef="OneD" unitRef="INRPerShare" decimals="2">13.22</in-capmkt:BasicEarningsPerShareAfterExtraordinaryItems>
+  <in-capmkt:BasicEarningsPerShareAfterExtraordinaryItems contextRef="FourD" unitRef="INRPerShare" decimals="2">49.5</in-capmkt:BasicEarningsPerShareAfterExtraordinaryItems>
+  <in-capmkt:Capital contextRef="OneI" unitRef="INR" decimals="-5">15393400000</in-capmkt:Capital>
+  <in-capmkt:ReservesAndSurplus contextRef="OneI" unitRef="INR" decimals="-5">5799750200000</in-capmkt:ReservesAndSurplus>
+  <in-capmkt:CashFlowsFromUsedInOperatingActivities contextRef="FourD" unitRef="INR" decimals="-5">1135063800000</in-capmkt:CashFlowsFromUsedInOperatingActivities>
+</xbrli:xbrl>

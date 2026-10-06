@@ -10,7 +10,9 @@ from datetime import date, timedelta
 
 from fund_xray_engine.nse import ARCHIVE, bhavcopy_url, close_all_url, parse_bhavcopy, parse_close_all, parse_constituents
 
-from common import fetch_text, nse_client, summary
+from fund_xray_engine import financials as fin
+
+from common import fetch_json, fetch_text, nse_api_client, nse_client, summary
 
 ok = True
 with nse_client() as c:
@@ -86,6 +88,31 @@ with nse_client() as c:
     except RuntimeError as e:
         summary(f"- ❌ niftyindices.com failing: {e}")
         ok = False
+
+# 6. Results filings (Week 3, Day 5): both lists for one company, and one XBRL file from each
+try:
+    with nse_api_client() as api:
+        old = fin.refs_from_old(fetch_json(api, fin.OLD_API.format(symbol="TCS")))
+        res = fetch_json(api, fin.INTEGRATED_API.format(symbol="TCS", page=1, size=50))
+        new = fin.refs_from_integrated(res.get("data", []) if isinstance(res, dict) else [])
+        since = fin.history_start(date.today())
+        summary(f"- {'✅' if old else '❌'} Older results list (to Dec 2024): {len(old)} filings for TCS"
+                f"{f', back to {min(r.period_end for r in old):%b %Y}' if old else ''}")
+        summary(f"- {'✅' if new else '❌'} Integrated Filing list (2025 on): {len(new)} filings for TCS"
+                f"{f', latest {max(r.period_end for r in new):%b %Y}' if new else ''}")
+        ok = ok and bool(old) and bool(new)
+        picks = fin.choose_refs(old + new, since)
+        api.headers["Accept"] = "application/xml,text/xml,*/*"
+        for label, ref in (("oldest needed", picks[0] if picks else None), ("latest", picks[-1] if picks else None)):
+            if ref is None:
+                continue
+            f = fin.parse_filing(fetch_text(api, ref.url) or "")
+            summary(f"- ✅ XBRL for {ref.period_end:%b %Y} ({label}): EPS ₹{f.eps_q}, {f.shares or 0:,.0f} shares"
+                    f"{f', operating cash flow ₹{f.ocf_ytd / 1e7:,.0f} cr' if f.ocf_ytd else ''}")
+        summary(f"- Import window: quarters from {since:%b %Y}; {len(picks)} quarters to fetch for TCS")
+except (RuntimeError, fin.FilingError) as e:
+    summary(f"- ❌ Results filings failing: {e}")
+    ok = False
 
 summary("NSE is reachable from here." if ok else "NSE refused at least one request from here; see above.")
 sys.exit(0 if ok else 1)

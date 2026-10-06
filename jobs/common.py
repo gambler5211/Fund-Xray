@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 import time
+import weakref
 
 import httpx
 
@@ -42,6 +43,53 @@ def fetch_text(client: httpx.Client, url: str, tries: int = 3) -> str | None:
             last = type(e).__name__
         time.sleep(2 * (attempt + 1))
     raise RuntimeError(f"{url}: {last}")
+
+
+NSE_WWW = "https://www.nseindia.com"
+
+
+_WARM: "weakref.WeakSet[httpx.Client]" = weakref.WeakSet()
+NSE_PAGE = f"{NSE_WWW}/companies-listing/corporate-integrated-filing"
+
+
+def nse_api_client() -> httpx.Client:
+    """A client for NSE's JSON API (www.nseindia.com/api/...). Use it in a `with` block; the first
+    fetch_json opens an NSE page first, since the API answers only browsers holding its cookies."""
+    c = nse_client()
+    c.headers["Accept"] = "application/json,text/plain,*/*"
+    return c
+
+
+def _warm(client: httpx.Client) -> None:
+    try:
+        client.get(NSE_PAGE)
+    except httpx.HTTPError:
+        pass  # the API call reports the failure
+    _WARM.add(client)
+
+
+def fetch_json(client: httpx.Client, path: str, tries: int = 3):
+    """GET an NSE API path ("/api/...") and parse the JSON. Opens the page again if the cookies
+    have expired (NSE answers 401/403 then)."""
+    if client not in _WARM:
+        _warm(client)
+    last = ""
+    for attempt in range(tries):
+        try:
+            r = client.get(f"{NSE_WWW}{path}")
+            if r.status_code == 200:
+                try:
+                    return r.json()
+                except ValueError:
+                    last = "not JSON"
+            else:
+                last = f"HTTP {r.status_code}"
+                if r.status_code in (401, 403):
+                    _warm(client)
+        except httpx.HTTPError as e:
+            last = type(e).__name__
+        time.sleep(2 * (attempt + 1))
+    raise RuntimeError(f"{path}: {last}")
 
 
 def _db_headers() -> dict[str, str]:

@@ -1,6 +1,6 @@
 /** RSI(14) wording and the allocation planner (Week 3, Day 4). Shared by server and client code. */
 
-export type RsiMap = Record<string, number>; // NSE symbol or index key -> RSI(14)
+export type RsiMap = Record<string, number>; // key -> RSI(14): NSE symbol from the database, "EXCHANGE:SYMBOL" in the holdings table
 
 /** Same bands as engine/fund_xray_engine/indicators.py: a description of the recent move, never a call. */
 export function rsiWords(v: number): string {

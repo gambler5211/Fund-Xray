@@ -32,5 +32,6 @@ jobs:
       - run: pip install -r api/requirements.txt
         working-directory: .
       - run: pytest -q engine/tests
+      - run: pytest -q jobs/tests
       - run: pytest -q
         working-directory: api
