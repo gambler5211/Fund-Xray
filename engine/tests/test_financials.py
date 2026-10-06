@@ -51,6 +51,16 @@ def test_bank_format():
     assert f.capex_ytd is None  # banks don't tag capex this way; reverse DCF is skipped for them anyway
 
 
+def test_old_web_copy_with_missing_contexts():
+    f = load("tcs_2022_12_web_missing_contexts.xml")
+    assert f.period_end == date(2022, 12, 31) and f.consolidated
+    assert f.ytd_months == 9
+    assert f.eps_q == 29.64 and f.eps_ytd == 84.05
+    assert f.shares == 3_660_000_000  # before the 2023 buyback
+    assert f.revenue_q == 582_290_000_000 and f.profit_q == 108_460_000_000
+    assert f.equity is None and f.ocf_ytd is None  # December results carry no balance sheet or cash flow
+
+
 def test_not_a_filing():
     with pytest.raises(fin.FilingError):
         fin.parse_filing("<html><body>Access denied</body></html>")
